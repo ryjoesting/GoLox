@@ -29,19 +29,65 @@ func NewParser(tokens []*Token) *Parser {
 	return &Parser{tokens: tokens}
 }
 
-func (parser *Parser) Parse() (Expr, error) {
-	if len(parser.tokens) == 0 {
-		return nil, ParseError{Message: "Expect expression."}
+func (parser *Parser) Parse() ([]Stmt, error) {
+	statements := []Stmt{}
+	var firstError error
+
+	for !parser.isAtEnd() {
+		statement, err := parser.statement()
+		if err != nil {
+			if firstError == nil {
+				firstError = err
+			}
+			parser.synchronize()
+			continue
+		}
+		statements = append(statements, statement)
 	}
 
+	return statements, firstError
+}
+
+func (parser *Parser) statement() (Stmt, error) {
+	if parser.match(PRINT) {
+		return parser.printStatement()
+	}
+	return parser.expressionStatement()
+}
+
+func (parser *Parser) printStatement() (Stmt, error) {
 	expression, err := parser.expression()
 	if err != nil {
 		return nil, err
 	}
-	if !parser.isAtEnd() {
-		return nil, parser.parseError(parser.peek(), "Expect end of expression.")
+	if _, err := parser.consume(SEMICOLON, "Expect ';' after value."); err != nil {
+		return nil, err
 	}
-	return expression, nil
+	return &PrintStmt{Expression: expression}, nil
+}
+
+func (parser *Parser) expressionStatement() (Stmt, error) {
+	expression, err := parser.expression()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := parser.consume(SEMICOLON, "Expect ';' after expression."); err != nil {
+		return nil, err
+	}
+	return &ExpressionStmt{Expression: expression}, nil
+}
+
+func (parser *Parser) synchronize() {
+	for !parser.isAtEnd() {
+		if parser.previous().Type == SEMICOLON {
+			return
+		}
+		switch parser.peek().Type {
+		case CLASS, FUN, VAR, FOR, IF, WHILE, PRINT, RETURN:
+			return
+		}
+		parser.advance()
+	}
 }
 
 func (parser *Parser) expression() (Expr, error) {

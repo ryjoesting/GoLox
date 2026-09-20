@@ -1,4 +1,3 @@
-hello this is abc.txt!
-/* this shouldn't print
-blah blah blah
-end */
+print "one";
+print true;
+print 2 + 1;

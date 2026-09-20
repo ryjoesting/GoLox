@@ -8,13 +8,28 @@ import (
 func assertParsedExpression(t *testing.T, source string, want string) {
 	t.Helper()
 
-	expression, err := parseSource(source)
+	expression, err := parseExpressionSource(source)
 	if err != nil {
 		t.Fatalf("parse %q: unexpected error: %v", source, err)
 	}
 	if got := (AstPrinter{}).Print(expression); got != want {
 		t.Fatalf("parse %q: got %q, want %q", source, got, want)
 	}
+}
+
+func parseExpressionSource(source string) (Expr, error) {
+	statements, err := parseSource(source + ";")
+	if err != nil {
+		return nil, err
+	}
+	if len(statements) != 1 {
+		return nil, ParseError{Message: "Expected one expression statement."}
+	}
+	statement, ok := statements[0].(*ExpressionStmt)
+	if !ok {
+		return nil, ParseError{Message: "Expected an expression statement."}
+	}
+	return statement.Expression, nil
 }
 
 func TestParserPrecedence(t *testing.T) {
@@ -50,18 +65,17 @@ func TestParserSyntaxErrors(t *testing.T) {
 		message string
 		context string
 	}{
-		{name: "empty input", source: "", message: "Expect expression.", context: "at end"},
 		{name: "missing operand", source: "1 +", message: "Expect expression.", context: "at end"},
 		{name: "missing parenthesis", source: "(1 + 2", message: "Expect ')' after expression.", context: "at end"},
 		{name: "invalid primary", source: ")", message: "Expect expression.", context: "at ')'"},
-		{name: "trailing token", source: "1 2", message: "Expect end of expression.", context: "at '2'"},
+		{name: "missing semicolon", source: "1", message: "Expect ';' after expression.", context: "at end"},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			expression, err := parseSource(test.source)
-			if expression != nil {
-				t.Fatalf("parse %q returned an expression after an error: %#v", test.source, expression)
+			if len(expression) != 0 {
+				t.Fatalf("parse %q returned statements after an error: %#v", test.source, expression)
 			}
 			if err == nil {
 				t.Fatalf("parse %q succeeded, want an error", test.source)
@@ -82,8 +96,8 @@ func TestParserLeadingBinaryOperatorErrors(t *testing.T) {
 	for _, source := range tests {
 		t.Run(source, func(t *testing.T) {
 			expression, err := parseSource(source)
-			if expression != nil {
-				t.Fatalf("parse %q returned an expression after an error: %#v", source, expression)
+			if len(expression) != 0 {
+				t.Fatalf("parse %q returned statements after an error: %#v", source, expression)
 			}
 			if err == nil {
 				t.Fatalf("parse %q succeeded, want an error", source)
@@ -108,8 +122,8 @@ func TestParserConditionalErrors(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {
 			expression, err := parseSource(test.source)
-			if expression != nil {
-				t.Fatalf("parse %q returned an expression after an error: %#v", test.source, expression)
+			if len(expression) != 0 {
+				t.Fatalf("parse %q returned statements after an error: %#v", test.source, expression)
 			}
 			if err == nil || !strings.Contains(err.Error(), test.message) {
 				t.Fatalf("parse %q error: got %v, want %q", test.source, err, test.message)
@@ -119,7 +133,7 @@ func TestParserConditionalErrors(t *testing.T) {
 }
 
 func TestParseSourceWiresScannerAndParser(t *testing.T) {
-	expression, err := parseSource("1 + 2 * 3")
+	expression, err := parseExpressionSource("1 + 2 * 3")
 	if err != nil {
 		t.Fatalf("parseSource returned an unexpected error: %v", err)
 	}
@@ -132,9 +146,9 @@ func TestParseSourceWiresScannerAndParser(t *testing.T) {
 }
 
 func TestParseSourceReturnsErrorsWithoutAnExpression(t *testing.T) {
-	expression, err := parseSource("1 +")
-	if expression != nil {
-		t.Fatalf("parseSource returned an expression after an error: %#v", expression)
+	statements, err := parseSource("1 +")
+	if len(statements) != 0 {
+		t.Fatalf("parseSource returned statements after an error: %#v", statements)
 	}
 	if err == nil {
 		t.Fatal("parseSource succeeded, want an error")

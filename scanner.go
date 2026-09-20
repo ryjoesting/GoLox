@@ -400,21 +400,15 @@ func run(src string) {
 }
 
 func runSource(src string) error {
-	expression, err := parseSource(src)
+	statements, err := parseSource(src)
 	if err != nil {
 		return err
 	}
 
-	value, err := interpreter.Interpret(expression)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(stringify(value))
-	return nil
+	return interpreter.Interpret(statements)
 }
 
-func parseSource(src string) (Expr, error) {
+func parseSource(src string) ([]Stmt, error) {
 	scanner := NewScanner(src)
 	tokens := scanner.scanTokens()
 	return NewParser(tokens).Parse()

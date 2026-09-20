@@ -47,10 +47,10 @@ You can also provide an absolute or relative path to another `.lox` source file:
 go run . path\to\your\source.lox
 ```
 
-The program parses and evaluates each input expression. For example,
-`1 + 2 * 3` prints `7`, while `"a" + "b"` prints `ab`. Syntax and runtime
-errors are written to stderr, and invalid expressions are not printed. The REPL
-continues after an error so the next expression can be evaluated.
+The program parses and executes complete Lox statements. Expression statements
+must end with `;` and discard their result. Print statements display their
+evaluated value, for example `print 1 + 2;` prints `3`. Syntax and runtime
+errors are written to stderr, and the REPL continues after an error.
 
 When running a file, the process uses exit code `65` for file or syntax errors,
 `70` for runtime errors, and `0` for success.
@@ -88,10 +88,16 @@ The expression AST tests can be run with:
 go test -run 'TestExpression|TestAstPrinter' -v
 ```
 
-The expression parser tests can be run with:
+The parser and statement tests can be run with:
 
 ```text
 go test -run TestParser -v
+```
+
+Statement tests can also be run with:
+
+```text
+go test -run 'TestParserBuildsStatements|TestInterpreterExecutesStatements' -v
 ```
 
 The interpreter tests can be run with:
@@ -108,24 +114,26 @@ grammar. The AST uses a sealed `Expr` interface with `Binary`, `Grouping`,
 double-dispatch for operations such as printing, and `AstPrinter` renders
 expressions as parenthesized tree structures such as `(* (- 123) (group 45.67))`.
 
-The expression parser uses recursive descent with precedence levels for comma,
-conditional, equality, comparison, term, factor, unary, and primary
-expressions. The interpreter evaluates literals, arithmetic, comparisons,
-equality, truthiness, comma expressions, and conditional expressions. Runtime
-errors include operator and line context. Statement parsing, variables, and
-statement-level error recovery are not implemented yet.
+The parser uses recursive descent with precedence levels for comma, conditional,
+equality, comparison, term, factor, unary, and primary expressions, then wraps
+expressions in expression or print statements. The interpreter executes
+multiple statements in order, evaluates literals and operators, and reports
+runtime errors with operator and line context. Statement-level synchronization
+recovers at semicolons and known statement starters.
 
 ## Project Files
 
 - `golox.go` - Program entry point and command-line handling.
 - `scanner.go` - Token definitions, lexical scanner, parser pipeline, REPL, and file execution.
 - `ast.go` - Expression AST nodes and the `ExprVisitor` interface.
+- `stmt.go` - Statement AST nodes and the `StmtVisitor` interface.
 - `ast_printer.go` - Visitor-based AST printer for inspecting tree structure.
 - `ast_test.go` - AST structure and printer tests.
-- `parser.go` - Recursive-descent expression parser and structured parse errors.
+- `parser.go` - Recursive-descent program/statement parser and structured parse errors.
 - `parser_test.go` - Parser precedence, associativity, primary expression, and syntax error tests.
-- `interpreter.go` - Expression evaluator, runtime errors, and value formatting.
+- `interpreter.go` - Expression/statement evaluator, runtime errors, and value formatting.
 - `interpreter_test.go` - Expression evaluation, runtime error, and pipeline tests.
+- `stmt_test.go` - Statement parsing and execution tests.
 - `scanner_test.go` - Built-in Go tests for scanner behavior.
 - `test_src_code.lox` - Example Lox source file.
 - `go.mod` - Go module definition.

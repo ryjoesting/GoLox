@@ -2,14 +2,24 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strconv"
 )
 
 type Interpreter struct {
 	runtimeError error
+	Output       io.Writer
 }
 
-var interpreter = &Interpreter{}
+var interpreter = NewInterpreter(nil)
+
+func NewInterpreter(output io.Writer) *Interpreter {
+	if output == nil {
+		output = os.Stdout
+	}
+	return &Interpreter{Output: output}
+}
 
 type RuntimeError struct {
 	Token   *Token
@@ -23,13 +33,21 @@ func (error RuntimeError) Error() string {
 	return fmt.Sprintf("[line %d] RuntimeError at '%s': %s", error.Token.Line, error.Token.Lexeme, error.Message)
 }
 
-func (interpreter *Interpreter) Interpret(expression Expr) (any, error) {
+func (interpreter *Interpreter) Interpret(statements []Stmt) error {
 	interpreter.runtimeError = nil
-	value := interpreter.evaluate(expression)
-	if interpreter.runtimeError != nil {
-		return nil, interpreter.runtimeError
+	for _, statement := range statements {
+		interpreter.execute(statement)
+		if interpreter.runtimeError != nil {
+			return interpreter.runtimeError
+		}
 	}
-	return value, nil
+	return nil
+}
+
+func (interpreter *Interpreter) execute(statement Stmt) {
+	if interpreter.runtimeError == nil {
+		statement.Accept(interpreter)
+	}
 }
 
 func (interpreter *Interpreter) evaluate(expression Expr) any {
@@ -140,6 +158,19 @@ func (interpreter *Interpreter) VisitConditionalExpr(expression *Conditional) an
 		return interpreter.evaluate(expression.Then)
 	}
 	return interpreter.evaluate(expression.Else)
+}
+
+func (interpreter *Interpreter) VisitExpressionStmt(statement *ExpressionStmt) any {
+	interpreter.evaluate(statement.Expression)
+	return nil
+}
+
+func (interpreter *Interpreter) VisitPrintStmt(statement *PrintStmt) any {
+	value := interpreter.evaluate(statement.Expression)
+	if interpreter.runtimeError == nil {
+		fmt.Fprintln(interpreter.Output, stringify(value))
+	}
+	return nil
 }
 
 func (interpreter *Interpreter) fail(token *Token, message string) any {

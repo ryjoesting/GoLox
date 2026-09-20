@@ -1,17 +1,23 @@
 package main
 
 import (
+	"io"
 	"os"
 	"strings"
 	"testing"
 )
 
 func interpretSource(source string) (any, error) {
-	expression, err := parseSource(source)
+	expression, err := parseExpressionSource(source)
 	if err != nil {
 		return nil, err
 	}
-	return (&Interpreter{}).Interpret(expression)
+	interpreter := NewInterpreter(io.Discard)
+	value := interpreter.evaluate(expression)
+	if interpreter.runtimeError != nil {
+		return nil, interpreter.runtimeError
+	}
+	return value, nil
 }
 
 func TestInterpreterEvaluatesExpressions(t *testing.T) {
@@ -117,25 +123,22 @@ func TestInterpreterRuntimeErrorIncludesTokenContext(t *testing.T) {
 }
 
 func TestInterpreterCanBeReusedAfterRuntimeError(t *testing.T) {
-	interpreter := &Interpreter{}
-	invalidExpression, err := parseSource(`-"text"`)
+	interpreter := NewInterpreter(io.Discard)
+	invalidStatements, err := parseSource(`-"text";`)
 	if err != nil {
 		t.Fatalf("parse invalid expression: %v", err)
 	}
-	if _, err := interpreter.Interpret(invalidExpression); err == nil {
+	if err := interpreter.Interpret(invalidStatements); err == nil {
 		t.Fatal("invalid expression succeeded, want a runtime error")
 	}
 
-	validExpression, err := parseSource("1 + 2")
+	validStatements, err := parseSource("1 + 2;")
 	if err != nil {
 		t.Fatalf("parse valid expression: %v", err)
 	}
-	value, err := interpreter.Interpret(validExpression)
+	err = interpreter.Interpret(validStatements)
 	if err != nil {
 		t.Fatalf("interpreter remained in an error state: %v", err)
-	}
-	if value != float64(3) {
-		t.Fatalf("got %#v, want 3", value)
 	}
 }
 
@@ -175,7 +178,7 @@ func TestStringify(t *testing.T) {
 }
 
 func TestRunSourceReturnsPipelineErrors(t *testing.T) {
-	if err := runSource("1 + 2"); err != nil {
+	if err := runSource("1 + 2;"); err != nil {
 		t.Fatalf("runSource returned an unexpected error: %v", err)
 	}
 	if err := runSource("1 + true"); err == nil {
@@ -192,9 +195,9 @@ func TestRunFileStatusCodes(t *testing.T) {
 		source string
 		status int
 	}{
-		{name: "success", source: "1 + 2", status: 0},
+		{name: "success", source: "1 + 2;", status: 0},
 		{name: "parse error", source: "1 +", status: 65},
-		{name: "runtime error", source: "1 + true", status: 70},
+		{name: "runtime error", source: "1 + true;", status: 70},
 	}
 
 	for _, test := range tests {
