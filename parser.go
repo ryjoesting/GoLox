@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 type Parser struct {
 	tokens  []*Token
@@ -216,7 +219,14 @@ func (parser *Parser) primary() (Expr, error) {
 	if parser.match(NIL) {
 		return &Literal{Value: nil}, nil
 	}
-	if parser.match(NUMBER, STRING) {
+	if parser.match(NUMBER) {
+		number, err := strconv.ParseFloat(parser.previous().Literal.(string), 64)
+		if err != nil {
+			return nil, parser.parseError(parser.previous(), "Invalid number literal.")
+		}
+		return &Literal{Value: number}, nil
+	}
+	if parser.match(STRING) {
 		return &Literal{Value: parser.previous().Literal}, nil
 	}
 	if parser.match(LEFT_PAREN) {

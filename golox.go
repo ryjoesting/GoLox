@@ -11,7 +11,7 @@ func main() {
 		fmt.Println("Usage: golox [script]")
 		os.Exit(64)
 	} else if len(args) == 1 {
-		runFile(args[0]) // Read in and run the source Lox file
+		os.Exit(runFile(args[0])) // Read in and run the source Lox file
 	} else {
 		runPrompt() // Start the REPL loop for Lox interpreter
 	}

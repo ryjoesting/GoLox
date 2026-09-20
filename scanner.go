@@ -358,14 +358,21 @@ func (s *Scanner) addToken(tokenType TokenType, literal any) {
 	s.tokens = append(s.tokens, NewToken(tokenType, text, literal, s.line))
 }
 
-func runFile(path string) {
+func runFile(path string) int {
 	// Read the file content
 	content, err := os.ReadFile(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
-		os.Exit(65)
+		return 65
 	}
-	run(string(content))
+	if err := runSource(string(content)); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		if _, ok := err.(ParseError); ok {
+			return 65
+		}
+		return 70
+	}
+	return 0
 }
 
 func runPrompt() {
@@ -387,13 +394,24 @@ func runPrompt() {
 }
 
 func run(src string) {
+	if err := runSource(src); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+}
+
+func runSource(src string) error {
 	expression, err := parseSource(src)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
+		return err
 	}
 
-	fmt.Println((AstPrinter{}).Print(expression))
+	value, err := interpreter.Interpret(expression)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(stringify(value))
+	return nil
 }
 
 func parseSource(src string) (Expr, error) {

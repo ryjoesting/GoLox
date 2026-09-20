@@ -47,9 +47,13 @@ You can also provide an absolute or relative path to another `.lox` source file:
 go run . path\to\your\source.lox
 ```
 
-The program parses each input expression and prints its parenthesized AST.
-For example, `1 + 2 * 3` prints `(+ 1 (* 2 3))`. Syntax errors are written to
-stderr, and invalid expressions are not printed as ASTs.
+The program parses and evaluates each input expression. For example,
+`1 + 2 * 3` prints `7`, while `"a" + "b"` prints `ab`. Syntax and runtime
+errors are written to stderr, and invalid expressions are not printed. The REPL
+continues after an error so the next expression can be evaluated.
+
+When running a file, the process uses exit code `65` for file or syntax errors,
+`70` for runtime errors, and `0` for success.
 
 ## Run the Tests
 
@@ -90,6 +94,12 @@ The expression parser tests can be run with:
 go test -run TestParser -v
 ```
 
+The interpreter tests can be run with:
+
+```text
+go test -run TestInterpreter -v
+```
+
 ## Current Implementation
 
 The project currently includes the scanner and the expression AST from the Lox
@@ -100,8 +110,9 @@ expressions as parenthesized tree structures such as `(* (- 123) (group 45.67))`
 
 The expression parser uses recursive descent with precedence levels for comma,
 conditional, equality, comparison, term, factor, unary, and primary
-expressions. It constructs the AST nodes from scanned tokens and returns
-structured syntax errors with line and token context. Statement parsing and
+expressions. The interpreter evaluates literals, arithmetic, comparisons,
+equality, truthiness, comma expressions, and conditional expressions. Runtime
+errors include operator and line context. Statement parsing, variables, and
 statement-level error recovery are not implemented yet.
 
 ## Project Files
@@ -113,6 +124,8 @@ statement-level error recovery are not implemented yet.
 - `ast_test.go` - AST structure and printer tests.
 - `parser.go` - Recursive-descent expression parser and structured parse errors.
 - `parser_test.go` - Parser precedence, associativity, primary expression, and syntax error tests.
+- `interpreter.go` - Expression evaluator, runtime errors, and value formatting.
+- `interpreter_test.go` - Expression evaluation, runtime error, and pipeline tests.
 - `scanner_test.go` - Built-in Go tests for scanner behavior.
 - `test_src_code.lox` - Example Lox source file.
 - `go.mod` - Go module definition.
