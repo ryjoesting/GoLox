@@ -1,0 +1,35 @@
+=== RUN   TestScannerSingleCharacterTokens
+--- PASS: TestScannerSingleCharacterTokens (0.00s)
+=== RUN   TestScannerCompoundOperators
+--- PASS: TestScannerCompoundOperators (0.00s)
+=== RUN   TestScannerWhitespaceCommentsAndLines
+--- PASS: TestScannerWhitespaceCommentsAndLines (0.00s)
+=== RUN   TestScannerBlockComments
+=== RUN   TestScannerBlockComments/same_line
+=== RUN   TestScannerBlockComments/multiline
+=== RUN   TestScannerBlockComments/empty
+--- PASS: TestScannerBlockComments (0.00s)
+    --- PASS: TestScannerBlockComments/same_line (0.00s)
+    --- PASS: TestScannerBlockComments/multiline (0.00s)
+    --- PASS: TestScannerBlockComments/empty (0.00s)
+=== RUN   TestScannerUnterminatedBlockComment
+[line 2] Error : Unterminated block comment.
+--- PASS: TestScannerUnterminatedBlockComment (0.00s)
+=== RUN   TestScannerKeywords
+--- PASS: TestScannerKeywords (0.00s)
+=== RUN   TestScannerIdentifiersAndKeywordPrefixes
+--- PASS: TestScannerIdentifiersAndKeywordPrefixes (0.00s)
+=== RUN   TestScannerStrings
+--- PASS: TestScannerStrings (0.00s)
+=== RUN   TestScannerNumbers
+--- PASS: TestScannerNumbers (0.00s)
+=== RUN   TestScannerEmptySource
+--- PASS: TestScannerEmptySource (0.00s)
+=== RUN   TestScannerMixedSource
+--- PASS: TestScannerMixedSource (0.00s)
+PASS
+ok  	golox	0.841s
+
+PASS
+coverage: 66.0% of statements
+ok      golox   1.015s

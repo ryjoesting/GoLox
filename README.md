@@ -76,10 +76,31 @@ To run only scanner tests:
 go test -run TestScanner -v
 ```
 
+The expression AST tests can be run with:
+
+```text
+go test -run 'TestExpression|TestAstPrinter' -v
+```
+
+## Current Implementation
+
+The project currently includes the scanner and the expression AST from the Lox
+grammar. The AST uses a sealed `Expr` interface with `Binary`, `Grouping`,
+`Literal`, and `Unary` expression nodes. An `ExprVisitor` interface provides
+double-dispatch for operations such as printing, and `AstPrinter` renders
+expressions as parenthesized tree structures such as `(* (- 123) (group 45.67))`.
+
+The recursive-descent parser has not been implemented yet. `parser.go` will
+eventually convert scanned tokens into these AST nodes.
+
 ## Project Files
 
 - `golox.go` - Program entry point and command-line handling.
 - `scanner.go` - Token definitions, lexical scanner, REPL, and file execution.
+- `ast.go` - Expression AST nodes and the `ExprVisitor` interface.
+- `ast_printer.go` - Visitor-based AST printer for inspecting tree structure.
+- `ast_test.go` - AST structure and printer tests.
+- `parser.go` - Reserved for the recursive-descent parser; not implemented yet.
 - `scanner_test.go` - Built-in Go tests for scanner behavior.
 - `test_src_code.lox` - Example Lox source file.
 - `go.mod` - Go module definition.
