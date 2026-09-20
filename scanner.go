@@ -62,6 +62,8 @@ const (
 	LEFT_BRACE
 	RIGHT_BRACE
 	COMMA
+	QUESTION
+	COLON
 	DOT
 	MINUS
 	PLUS
@@ -109,7 +111,7 @@ const (
 func (t TokenType) String() string {
 	strings := [...]string{
 		"UNKNOWN", "LEFT_PAREN", "RIGHT_PAREN", "LEFT_BRACE", "RIGHT_BRACE",
-		"COMMA", "DOT", "MINUS", "PLUS", "SEMICOLON", "SLASH", "STAR",
+		"COMMA", "QUESTION", "COLON", "DOT", "MINUS", "PLUS", "SEMICOLON", "SLASH", "STAR",
 		"BANG", "BANG_EQUAL", "EQUAL", "EQUAL_EQUAL", "GREATER", "GREATER_EQUAL",
 		"LESS", "LESS_EQUAL", "IDENTIFIER", "STRING", "NUMBER",
 		"AND", "CLASS", "ELSE", "FALSE", "FUN", "FOR", "IF", "NIL", "OR",
@@ -166,6 +168,10 @@ func (s *Scanner) scanToken() {
 		s.addToken(RIGHT_BRACE, nil)
 	case ',':
 		s.addToken(COMMA, nil)
+	case '?':
+		s.addToken(QUESTION, nil)
+	case ':':
+		s.addToken(COLON, nil)
 	case '.':
 		s.addToken(DOT, nil)
 	case '-':
@@ -381,12 +387,19 @@ func runPrompt() {
 }
 
 func run(src string) {
+	expression, err := parseSource(src)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+
+	fmt.Println((AstPrinter{}).Print(expression))
+}
+
+func parseSource(src string) (Expr, error) {
 	scanner := NewScanner(src)
 	tokens := scanner.scanTokens()
-
-	for _, token := range tokens {
-		fmt.Println(token)
-	}
+	return NewParser(tokens).Parse()
 }
 
 func reportError(line int, where string, message string) {

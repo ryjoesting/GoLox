@@ -19,6 +19,10 @@ func (printer AstPrinter) VisitBinaryExpr(expression *Binary) any {
 	return printer.parenthesize(expression.Operator.Lexeme, expression.Left, expression.Right)
 }
 
+func (printer AstPrinter) VisitConditionalExpr(expression *Conditional) any {
+	return printer.parenthesize("?:", expression.Condition, expression.Then, expression.Else)
+}
+
 func (printer AstPrinter) VisitGroupingExpr(expression *Grouping) any {
 	return printer.parenthesize("group", expression.Expression)
 }

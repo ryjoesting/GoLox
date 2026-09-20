@@ -81,6 +81,14 @@ func TestScannerCompoundOperators(t *testing.T) {
 	})
 }
 
+func TestScannerConditionalTokens(t *testing.T) {
+	assertTokens(t, "? :", []expectedToken{
+		token(QUESTION, "?", nil, 1),
+		token(COLON, ":", nil, 1),
+		eof(1),
+	})
+}
+
 func TestScannerWhitespaceCommentsAndLines(t *testing.T) {
 	assertTokens(t, "  // ignored\nprint\ttrue\r\n// ignored at EOF", []expectedToken{
 		token(PRINT, "print", nil, 2),

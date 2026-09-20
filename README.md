@@ -47,7 +47,9 @@ You can also provide an absolute or relative path to another `.lox` source file:
 go run . path\to\your\source.lox
 ```
 
-The scanner prints each token it recognizes, including the final `EOF` token.
+The program parses each input expression and prints its parenthesized AST.
+For example, `1 + 2 * 3` prints `(+ 1 (* 2 3))`. Syntax errors are written to
+stderr, and invalid expressions are not printed as ASTs.
 
 ## Run the Tests
 
@@ -82,6 +84,12 @@ The expression AST tests can be run with:
 go test -run 'TestExpression|TestAstPrinter' -v
 ```
 
+The expression parser tests can be run with:
+
+```text
+go test -run TestParser -v
+```
+
 ## Current Implementation
 
 The project currently includes the scanner and the expression AST from the Lox
@@ -90,17 +98,21 @@ grammar. The AST uses a sealed `Expr` interface with `Binary`, `Grouping`,
 double-dispatch for operations such as printing, and `AstPrinter` renders
 expressions as parenthesized tree structures such as `(* (- 123) (group 45.67))`.
 
-The recursive-descent parser has not been implemented yet. `parser.go` will
-eventually convert scanned tokens into these AST nodes.
+The expression parser uses recursive descent with precedence levels for comma,
+conditional, equality, comparison, term, factor, unary, and primary
+expressions. It constructs the AST nodes from scanned tokens and returns
+structured syntax errors with line and token context. Statement parsing and
+statement-level error recovery are not implemented yet.
 
 ## Project Files
 
 - `golox.go` - Program entry point and command-line handling.
-- `scanner.go` - Token definitions, lexical scanner, REPL, and file execution.
+- `scanner.go` - Token definitions, lexical scanner, parser pipeline, REPL, and file execution.
 - `ast.go` - Expression AST nodes and the `ExprVisitor` interface.
 - `ast_printer.go` - Visitor-based AST printer for inspecting tree structure.
 - `ast_test.go` - AST structure and printer tests.
-- `parser.go` - Reserved for the recursive-descent parser; not implemented yet.
+- `parser.go` - Recursive-descent expression parser and structured parse errors.
+- `parser_test.go` - Parser precedence, associativity, primary expression, and syntax error tests.
 - `scanner_test.go` - Built-in Go tests for scanner behavior.
 - `test_src_code.lox` - Example Lox source file.
 - `go.mod` - Go module definition.

@@ -7,6 +7,7 @@ type Expr interface {
 
 type ExprVisitor interface {
 	VisitBinaryExpr(expression *Binary) any
+	VisitConditionalExpr(expression *Conditional) any
 	VisitGroupingExpr(expression *Grouping) any
 	VisitLiteralExpr(expression *Literal) any
 	VisitUnaryExpr(expression *Unary) any
@@ -22,6 +23,18 @@ func (*Binary) isExpr() {}
 
 func (expression *Binary) Accept(visitor ExprVisitor) any {
 	return visitor.VisitBinaryExpr(expression)
+}
+
+type Conditional struct {
+	Condition Expr
+	Then      Expr
+	Else      Expr
+}
+
+func (*Conditional) isExpr() {}
+
+func (expression *Conditional) Accept(visitor ExprVisitor) any {
+	return visitor.VisitConditionalExpr(expression)
 }
 
 type Grouping struct {
