@@ -6,7 +6,7 @@ import (
 )
 
 func TestParserBuildsStatements(t *testing.T) {
-	statements, err := parseSource("1 + 2; print \"hello\";")
+	statements, err := parseSource("var beverage = \"espresso\"; print beverage;")
 	if err != nil {
 		t.Fatalf("parse statements: %v", err)
 	}
@@ -14,20 +14,23 @@ func TestParserBuildsStatements(t *testing.T) {
 		t.Fatalf("got %d statements, want 2", len(statements))
 	}
 
-	expressionStatement, ok := statements[0].(*ExpressionStmt)
+	varStatement, ok := statements[0].(*VarStmt)
 	if !ok {
-		t.Fatalf("statement 0 type: got %T, want *ExpressionStmt", statements[0])
+		t.Fatalf("statement 0 type: got %T, want *VarStmt", statements[0])
 	}
-	if got := (AstPrinter{}).Print(expressionStatement.Expression); got != "(+ 1 2)" {
-		t.Fatalf("expression statement: got %q, want %q", got, "(+ 1 2)")
+	if got := varStatement.Name.Lexeme; got != "beverage" {
+		t.Fatalf("variable name: got %q, want %q", got, "beverage")
+	}
+	if got := (AstPrinter{}).Print(varStatement.Initializer); got != "espresso" {
+		t.Fatalf("variable initializer: got %q, want %q", got, "espresso")
 	}
 
 	printStatement, ok := statements[1].(*PrintStmt)
 	if !ok {
 		t.Fatalf("statement 1 type: got %T, want *PrintStmt", statements[1])
 	}
-	if got := (AstPrinter{}).Print(printStatement.Expression); got != "hello" {
-		t.Fatalf("print statement: got %q, want %q", got, "hello")
+	if got := (AstPrinter{}).Print(printStatement.Expression); got != "beverage" {
+		t.Fatalf("print statement: got %q, want %q", got, "beverage")
 	}
 }
 
@@ -51,6 +54,20 @@ func TestParserSynchronizesAfterStatementError(t *testing.T) {
 	}
 	if _, ok := statements[0].(*PrintStmt); !ok {
 		t.Fatalf("recovered statement type: got %T, want *PrintStmt", statements[0])
+	}
+}
+
+func TestParserAcceptsUninitializedVariable(t *testing.T) {
+	statements, err := parseSource("var beverage;")
+	if err != nil {
+		t.Fatalf("parse declaration: %v", err)
+	}
+	varStatement, ok := statements[0].(*VarStmt)
+	if !ok {
+		t.Fatalf("statement type: got %T, want *VarStmt", statements[0])
+	}
+	if varStatement.Initializer != nil {
+		t.Fatalf("initializer: got %T, want nil", varStatement.Initializer)
 	}
 }
 
@@ -83,5 +100,65 @@ func TestInterpreterStopsAfterStatementRuntimeError(t *testing.T) {
 	}
 	if got, want := output.String(), "1\n"; got != want {
 		t.Fatalf("statement output after error: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterExecutesGlobalVariables(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("var beverage = \"espresso\"; print beverage; var empty; print empty;")
+	if err != nil {
+		t.Fatalf("parse statements: %v", err)
+	}
+
+	statementInterpreter := NewInterpreter(&output)
+	if err := statementInterpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret statements: %v", err)
+	}
+	if got, want := output.String(), "espresso\nnil\n"; got != want {
+		t.Fatalf("global variable output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterGlobalsPersistAcrossInterpretCalls(t *testing.T) {
+	var output bytes.Buffer
+	statementInterpreter := NewInterpreter(&output)
+
+	first, err := parseSource("var beverage = \"espresso\";")
+	if err != nil {
+		t.Fatalf("parse declaration: %v", err)
+	}
+	if err := statementInterpreter.Interpret(first); err != nil {
+		t.Fatalf("interpret declaration: %v", err)
+	}
+
+	second, err := parseSource("print beverage;")
+	if err != nil {
+		t.Fatalf("parse access: %v", err)
+	}
+	if err := statementInterpreter.Interpret(second); err != nil {
+		t.Fatalf("interpret access: %v", err)
+	}
+	if got, want := output.String(), "espresso\n"; got != want {
+		t.Fatalf("persistent global output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterReportsUndefinedGlobal(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("print beverage; print 2;")
+	if err != nil {
+		t.Fatalf("parse statements: %v", err)
+	}
+
+	statementInterpreter := NewInterpreter(&output)
+	err = statementInterpreter.Interpret(statements)
+	if err == nil {
+		t.Fatal("interpret succeeded, want an undefined variable error")
+	}
+	if got, want := err.Error(), "[line 1] RuntimeError at 'beverage': Undefined variable 'beverage'."; got != want {
+		t.Fatalf("runtime error: got %q, want %q", got, want)
+	}
+	if output.Len() != 0 {
+		t.Fatalf("output after undefined variable: got %q, want empty", output.String())
 	}
 }

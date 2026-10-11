@@ -10,6 +10,7 @@ import (
 type Interpreter struct {
 	runtimeError error
 	Output       io.Writer
+	globals      map[string]any
 }
 
 var interpreter = NewInterpreter(nil)
@@ -18,7 +19,7 @@ func NewInterpreter(output io.Writer) *Interpreter {
 	if output == nil {
 		output = os.Stdout
 	}
-	return &Interpreter{Output: output}
+	return &Interpreter{Output: output, globals: make(map[string]any)}
 }
 
 type RuntimeError struct {
@@ -59,6 +60,14 @@ func (interpreter *Interpreter) evaluate(expression Expr) any {
 
 func (interpreter *Interpreter) VisitLiteralExpr(expression *Literal) any {
 	return expression.Value
+}
+
+func (interpreter *Interpreter) VisitVariableExpr(expression *Variable) any {
+	value, ok := interpreter.globals[expression.Name.Lexeme]
+	if !ok {
+		return interpreter.fail(expression.Name, fmt.Sprintf("Undefined variable '%s'.", expression.Name.Lexeme))
+	}
+	return value
 }
 
 func (interpreter *Interpreter) VisitGroupingExpr(expression *Grouping) any {
@@ -170,6 +179,18 @@ func (interpreter *Interpreter) VisitPrintStmt(statement *PrintStmt) any {
 	if interpreter.runtimeError == nil {
 		fmt.Fprintln(interpreter.Output, stringify(value))
 	}
+	return nil
+}
+
+func (interpreter *Interpreter) VisitVarStmt(statement *VarStmt) any {
+	var value any
+	if statement.Initializer != nil {
+		value = interpreter.evaluate(statement.Initializer)
+		if interpreter.runtimeError != nil {
+			return nil
+		}
+	}
+	interpreter.globals[statement.Name.Lexeme] = value
 	return nil
 }
 

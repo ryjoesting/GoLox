@@ -34,6 +34,10 @@ func (AstPrinter) VisitLiteralExpr(expression *Literal) any {
 	return fmt.Sprint(expression.Value)
 }
 
+func (AstPrinter) VisitVariableExpr(expression *Variable) any {
+	return expression.Name.Lexeme
+}
+
 func (printer AstPrinter) VisitUnaryExpr(expression *Unary) any {
 	return printer.parenthesize(expression.Operator.Lexeme, expression.Right)
 }

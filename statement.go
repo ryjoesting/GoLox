@@ -10,6 +10,7 @@ type Stmt interface {
 type StmtVisitor interface {
 	VisitExpressionStmt(statement *ExpressionStmt) any
 	VisitPrintStmt(statement *PrintStmt) any
+	VisitVarStmt(statement *VarStmt) any
 }
 
 type ExpressionStmt struct {
@@ -30,4 +31,15 @@ func (*PrintStmt) isStmt() {}
 
 func (statement *PrintStmt) Accept(visitor StmtVisitor) any {
 	return visitor.VisitPrintStmt(statement)
+}
+
+type VarStmt struct {
+	Name        *Token
+	Initializer Expr
+}
+
+func (*VarStmt) isStmt() {}
+
+func (statement *VarStmt) Accept(visitor StmtVisitor) any {
+	return visitor.VisitVarStmt(statement)
 }

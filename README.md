@@ -49,8 +49,10 @@ go run . path\to\your\source.lox
 
 The program parses and executes complete Lox statements. Expression statements
 must end with `;` and discard their result. Print statements display their
-evaluated value, for example `print 1 + 2;` prints `3`. Syntax and runtime
-errors are written to stderr, and the REPL continues after an error.
+evaluated value, for example `print 1 + 2;` prints `3`. Global variables can
+be declared with `var name = value;` and read by name; declarations without an
+initializer contain `nil`. Syntax and runtime errors are written to stderr,
+and the REPL continues after an error.
 
 When running a file, the process uses exit code `65` for file or syntax errors,
 `70` for runtime errors, and `0` for success.
@@ -116,10 +118,11 @@ expressions as parenthesized tree structures such as `(* (- 123) (group 45.67))`
 
 The parser uses recursive descent with precedence levels for comma, conditional,
 equality, comparison, term, factor, unary, and primary expressions, then wraps
-expressions in expression or print statements. The interpreter executes
-multiple statements in order, evaluates literals and operators, and reports
-runtime errors with operator and line context. Statement-level synchronization
-recovers at semicolons and known statement starters.
+expressions in declarations, expression statements, or print statements. The
+interpreter executes multiple statements in order, evaluates literals,
+operators, and global variables, and reports runtime errors with operator,
+variable, and line context. Statement-level synchronization recovers at
+semicolons and known statement starters.
 
 ## Project Files
 

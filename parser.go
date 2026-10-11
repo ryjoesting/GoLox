@@ -34,7 +34,7 @@ func (parser *Parser) Parse() ([]Stmt, error) {
 	var firstError error
 
 	for !parser.isAtEnd() {
-		statement, err := parser.statement()
+		statement, err := parser.declaration()
 		if err != nil {
 			if firstError == nil {
 				firstError = err
@@ -46,6 +46,13 @@ func (parser *Parser) Parse() ([]Stmt, error) {
 	}
 
 	return statements, firstError
+}
+
+func (parser *Parser) declaration() (Stmt, error) {
+	if parser.match(VAR) {
+		return parser.varDeclaration()
+	}
+	return parser.statement()
 }
 
 func (parser *Parser) statement() (Stmt, error) {
@@ -64,6 +71,26 @@ func (parser *Parser) printStatement() (Stmt, error) {
 		return nil, err
 	}
 	return &PrintStmt{Expression: expression}, nil
+}
+
+func (parser *Parser) varDeclaration() (Stmt, error) {
+	name, err := parser.consume(IDENTIFIER, "Expect variable name.")
+	if err != nil {
+		return nil, err
+	}
+
+	var initializer Expr
+	if parser.match(EQUAL) {
+		initializer, err = parser.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if _, err := parser.consume(SEMICOLON, "Expect ';' after variable declaration."); err != nil {
+		return nil, err
+	}
+	return &VarStmt{Name: name, Initializer: initializer}, nil
 }
 
 func (parser *Parser) expressionStatement() (Stmt, error) {
@@ -284,6 +311,9 @@ func (parser *Parser) primary() (Expr, error) {
 			return nil, err
 		}
 		return &Grouping{Expression: expression}, nil
+	}
+	if parser.match(IDENTIFIER) {
+		return &Variable{Name: parser.previous()}, nil
 	}
 	return nil, parser.parseError(parser.peek(), "Expect expression.")
 }
