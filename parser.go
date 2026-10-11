@@ -118,7 +118,30 @@ func (parser *Parser) synchronize() {
 }
 
 func (parser *Parser) expression() (Expr, error) {
-	return parser.comma()
+	return parser.assignment()
+}
+
+func (parser *Parser) assignment() (Expr, error) {
+	expression, err := parser.comma()
+	if err != nil {
+		return nil, err
+	}
+
+	if !parser.match(EQUAL) {
+		return expression, nil
+	}
+
+	equals := parser.previous()
+	value, err := parser.assignment()
+	if err != nil {
+		return nil, err
+	}
+
+	variable, ok := expression.(*Variable)
+	if !ok {
+		return nil, parser.parseError(equals, "Invalid assignment target.")
+	}
+	return &Assign{Name: variable.Name, Value: value}, nil
 }
 
 func (parser *Parser) comma() (Expr, error) {

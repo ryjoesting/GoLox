@@ -42,12 +42,14 @@ func TestParserAssociativity(t *testing.T) {
 	assertParsedExpression(t, "--1", "(- (- 1))")
 	assertParsedExpression(t, "1, 2, 3", "(, (, 1 2) 3)")
 	assertParsedExpression(t, "true ? 1 : false ? 2 : 3", "(?: true 1 (?: false 2 3))")
+	assertParsedExpression(t, "a = b = 3", "(= a (= b 3))")
 }
 
 func TestParserCommaAndConditionalPrecedence(t *testing.T) {
 	assertParsedExpression(t, "1 + 2, 3 * 4", "(, (+ 1 2) (* 3 4))")
 	assertParsedExpression(t, "true ? 1, 2 : 3", "(?: true (, 1 2) 3)")
 	assertParsedExpression(t, "1 == 2 ? 3 : 4", "(?: (== 1 2) 3 4)")
+	assertParsedExpression(t, "a = 1, 2", "(= a (, 1 2))")
 }
 
 func TestParserPrimaryExpressions(t *testing.T) {
@@ -127,6 +129,22 @@ func TestParserConditionalErrors(t *testing.T) {
 			}
 			if err == nil || !strings.Contains(err.Error(), test.message) {
 				t.Fatalf("parse %q error: got %v, want %q", test.source, err, test.message)
+			}
+		})
+	}
+}
+
+func TestParserAssignmentErrors(t *testing.T) {
+	tests := []string{"1 = 2", "(a) = 3", "a + b = c"}
+
+	for _, source := range tests {
+		t.Run(source, func(t *testing.T) {
+			statements, err := parseSource(source + ";")
+			if len(statements) != 0 {
+				t.Fatalf("parse %q returned statements after an error: %#v", source, statements)
+			}
+			if err == nil || !strings.Contains(err.Error(), "Invalid assignment target.") {
+				t.Fatalf("parse %q error: got %v, want invalid assignment target", source, err)
 			}
 		})
 	}

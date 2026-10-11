@@ -53,6 +53,9 @@ evaluated value, for example `print 1 + 2;` prints `3`. Global variables can
 be declared with `var name = value;` and read by name; declarations without an
 initializer contain `nil`. Global bindings are stored in an environment for
 the lifetime of the interpreter, and redefining a global replaces its value.
+Assignments such as `name = value;` update existing variables and evaluate to
+the assigned value; assignment is right-associative and cannot create a new
+variable.
 Syntax and runtime errors are written to stderr, and the REPL continues after
 an error.
 
@@ -122,8 +125,9 @@ The parser uses recursive descent with precedence levels for comma, conditional,
 equality, comparison, term, factor, unary, and primary expressions, then wraps
 expressions in declarations, expression statements, or print statements. The
 interpreter executes multiple statements in order, evaluates literals,
-operators, and global variables through a dedicated environment abstraction,
-and reports runtime errors with operator, variable, and line context.
+operators, global variables, and assignments through a dedicated environment
+abstraction, and reports runtime errors with operator, variable, and line
+context.
 Statement-level synchronization recovers at semicolons and known statement
 starters.
 

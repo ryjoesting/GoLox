@@ -15,6 +15,10 @@ func (printer AstPrinter) Print(expression Expr) string {
 	return expression.Accept(printer).(string)
 }
 
+func (printer AstPrinter) VisitAssignExpr(expression *Assign) any {
+	return printer.parenthesize("=", &Variable{Name: expression.Name}, expression.Value)
+}
+
 func (printer AstPrinter) VisitBinaryExpr(expression *Binary) any {
 	return printer.parenthesize(expression.Operator.Lexeme, expression.Left, expression.Right)
 }

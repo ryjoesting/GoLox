@@ -34,6 +34,36 @@ func TestEnvironmentAllowsRedefinition(t *testing.T) {
 	}
 }
 
+func TestEnvironmentAssignsExistingValues(t *testing.T) {
+	environment := NewEnvironment()
+	name := NewToken(IDENTIFIER, "answer", "answer", 1)
+	environment.Define(name.Lexeme, 1.0)
+
+	if err := environment.Assign(name, 2.0); err != nil {
+		t.Fatalf("assign existing value: %v", err)
+	}
+	value, err := environment.Get(name)
+	if err != nil {
+		t.Fatalf("get assigned value: %v", err)
+	}
+	if got, want := value, 2.0; got != want {
+		t.Fatalf("assigned value: got %v, want %v", got, want)
+	}
+}
+
+func TestEnvironmentRejectsAssignmentToUndefinedValue(t *testing.T) {
+	environment := NewEnvironment()
+	name := NewToken(IDENTIFIER, "missing", "missing", 1)
+
+	err := environment.Assign(name, 2.0)
+	if err == nil {
+		t.Fatal("assign undefined value succeeded, want an error")
+	}
+	if !strings.Contains(err.Error(), "Undefined variable 'missing'.") {
+		t.Fatalf("undefined assignment error: got %q", err)
+	}
+}
+
 func TestEnvironmentStoresNil(t *testing.T) {
 	environment := NewEnvironment()
 	name := NewToken(IDENTIFIER, "empty", "empty", 1)

@@ -159,6 +159,55 @@ func TestInterpreterAllowsGlobalRedefinition(t *testing.T) {
 	}
 }
 
+func TestInterpreterAssignsGlobalVariables(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("var a = 1; print a = 2; print a;")
+	if err != nil {
+		t.Fatalf("parse statements: %v", err)
+	}
+
+	statementInterpreter := NewInterpreter(&output)
+	if err := statementInterpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret statements: %v", err)
+	}
+	if got, want := output.String(), "2\n2\n"; got != want {
+		t.Fatalf("assignment output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterAssignsRightAssociatively(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("var a; var b; print a = b = 3; print a; print b;")
+	if err != nil {
+		t.Fatalf("parse statements: %v", err)
+	}
+
+	statementInterpreter := NewInterpreter(&output)
+	if err := statementInterpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret statements: %v", err)
+	}
+	if got, want := output.String(), "3\n3\n3\n"; got != want {
+		t.Fatalf("chained assignment output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterRejectsUndefinedAssignment(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("a = 1;")
+	if err != nil {
+		t.Fatalf("parse statements: %v", err)
+	}
+
+	statementInterpreter := NewInterpreter(&output)
+	err = statementInterpreter.Interpret(statements)
+	if err == nil {
+		t.Fatal("interpret succeeded, want an undefined assignment error")
+	}
+	if got, want := err.Error(), "[line 1] RuntimeError at 'a': Undefined variable 'a'."; got != want {
+		t.Fatalf("runtime error: got %q, want %q", got, want)
+	}
+}
+
 func TestInterpreterReportsUndefinedGlobal(t *testing.T) {
 	var output bytes.Buffer
 	statements, err := parseSource("print beverage; print 2;")

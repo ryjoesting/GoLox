@@ -6,12 +6,24 @@ type Expr interface {
 }
 
 type ExprVisitor interface {
+	VisitAssignExpr(expression *Assign) any
 	VisitBinaryExpr(expression *Binary) any
 	VisitConditionalExpr(expression *Conditional) any
 	VisitGroupingExpr(expression *Grouping) any
 	VisitLiteralExpr(expression *Literal) any
 	VisitUnaryExpr(expression *Unary) any
 	VisitVariableExpr(expression *Variable) any
+}
+
+type Assign struct {
+	Name  *Token
+	Value Expr
+}
+
+func (*Assign) isExpr() {}
+
+func (expression *Assign) Accept(visitor ExprVisitor) any {
+	return visitor.VisitAssignExpr(expression)
 }
 
 type Binary struct {

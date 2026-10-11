@@ -62,6 +62,18 @@ func (interpreter *Interpreter) VisitLiteralExpr(expression *Literal) any {
 	return expression.Value
 }
 
+func (interpreter *Interpreter) VisitAssignExpr(expression *Assign) any {
+	value := interpreter.evaluate(expression.Value)
+	if interpreter.runtimeError != nil {
+		return nil
+	}
+	if err := interpreter.environment.Assign(expression.Name, value); err != nil {
+		interpreter.runtimeError = err
+		return nil
+	}
+	return value
+}
+
 func (interpreter *Interpreter) VisitVariableExpr(expression *Variable) any {
 	value, err := interpreter.environment.Get(expression.Name)
 	if err != nil {
