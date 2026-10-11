@@ -62,6 +62,9 @@ func (parser *Parser) statement() (Stmt, error) {
 	if parser.match(IF) {
 		return parser.ifStatement()
 	}
+	if parser.match(WHILE) {
+		return parser.whileStatement()
+	}
 	if parser.match(PRINT) {
 		return parser.printStatement()
 	}
@@ -93,6 +96,24 @@ func (parser *Parser) ifStatement() (Stmt, error) {
 		}
 	}
 	return &IfStmt{Condition: condition, ThenBranch: thenBranch, ElseBranch: elseBranch}, nil
+}
+
+func (parser *Parser) whileStatement() (Stmt, error) {
+	if _, err := parser.consume(LEFT_PAREN, "Expect '(' after 'while'."); err != nil {
+		return nil, err
+	}
+	condition, err := parser.expression()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := parser.consume(RIGHT_PAREN, "Expect ')' after condition."); err != nil {
+		return nil, err
+	}
+	body, err := parser.statement()
+	if err != nil {
+		return nil, err
+	}
+	return &WhileStmt{Condition: condition, Body: body}, nil
 }
 
 func (parser *Parser) blockStatement() (Stmt, error) {

@@ -63,6 +63,8 @@ branch. Only the selected branch executes, and an `else` binds to the nearest
 unmatched `if`.
 Logical `or` and `and` operators short-circuit from left to right and return
 operand values, with `or` having lower precedence than `and`.
+While loops use `while (condition) statement`, re-evaluating the condition
+before each iteration and accepting any statement as the body.
 Syntax and runtime errors are written to stderr, and the REPL continues after
 an error.
 

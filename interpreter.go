@@ -97,6 +97,19 @@ func (interpreter *Interpreter) VisitIfStmt(statement *IfStmt) any {
 	return nil
 }
 
+func (interpreter *Interpreter) VisitWhileStmt(statement *WhileStmt) any {
+	for {
+		condition := interpreter.evaluate(statement.Condition)
+		if interpreter.runtimeError != nil || !isTruthy(condition) {
+			return nil
+		}
+		interpreter.execute(statement.Body)
+		if interpreter.runtimeError != nil {
+			return nil
+		}
+	}
+}
+
 func (interpreter *Interpreter) VisitAssignExpr(expression *Assign) any {
 	value := interpreter.evaluate(expression.Value)
 	if interpreter.runtimeError != nil {

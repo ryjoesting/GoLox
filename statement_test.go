@@ -427,6 +427,103 @@ func TestParserReportsIfSyntaxErrors(t *testing.T) {
 	}
 }
 
+func TestParserBuildsWhileStatement(t *testing.T) {
+	statements, err := parseSource("while (true) print \"loop\";")
+	if err != nil {
+		t.Fatalf("parse while statement: %v", err)
+	}
+	if len(statements) != 1 {
+		t.Fatalf("got %d statements, want 1", len(statements))
+	}
+	whileStatement, ok := statements[0].(*WhileStmt)
+	if !ok {
+		t.Fatalf("statement type: got %T, want *WhileStmt", statements[0])
+	}
+	if whileStatement.Body == nil {
+		t.Fatal("while body is nil")
+	}
+}
+
+func TestInterpreterExecutesWhileLoop(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("var i = 0; while (i < 3) { print i; i = i + 1; }")
+	if err != nil {
+		t.Fatalf("parse while loop: %v", err)
+	}
+	if err := NewInterpreter(&output).Interpret(statements); err != nil {
+		t.Fatalf("interpret while loop: %v", err)
+	}
+	if got, want := output.String(), "0\n1\n2\n"; got != want {
+		t.Fatalf("while output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterSkipsFalseyWhileLoop(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource(`while (false) print missing;`)
+	if err != nil {
+		t.Fatalf("parse falsey while loop: %v", err)
+	}
+	if err := NewInterpreter(&output).Interpret(statements); err != nil {
+		t.Fatalf("interpret falsey while loop: %v", err)
+	}
+	if output.Len() != 0 {
+		t.Fatalf("falsey while output: got %q, want empty", output.String())
+	}
+}
+
+func TestInterpreterWhileSupportsNestedControlFlow(t *testing.T) {
+	var output bytes.Buffer
+	source := `var i = 0; while (i < 2) { if (i == 1) print "one"; else print "zero"; i = i + 1; }`
+	statements, err := parseSource(source)
+	if err != nil {
+		t.Fatalf("parse nested while control flow: %v", err)
+	}
+	if err := NewInterpreter(&output).Interpret(statements); err != nil {
+		t.Fatalf("interpret nested while control flow: %v", err)
+	}
+	if got, want := output.String(), "zero\none\n"; got != want {
+		t.Fatalf("nested while output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterStopsWhileLoopOnRuntimeError(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource(`var i = 0; while (i < 2) { print i; i = i + missing; } print "after";`)
+	if err != nil {
+		t.Fatalf("parse while runtime error: %v", err)
+	}
+	err = NewInterpreter(&output).Interpret(statements)
+	if err == nil {
+		t.Fatal("interpret succeeded, want runtime error")
+	}
+	if got, want := err.Error(), "[line 1] RuntimeError at 'missing': Undefined variable 'missing'."; got != want {
+		t.Fatalf("runtime error: got %q, want %q", got, want)
+	}
+	if got, want := output.String(), "0\n"; got != want {
+		t.Fatalf("output after while runtime error: got %q, want %q", got, want)
+	}
+}
+
+func TestParserReportsWhileSyntaxErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		source  string
+		message string
+	}{
+		{name: "missing opening parenthesis", source: "while true print 1;", message: "Expect '(' after 'while'."},
+		{name: "missing closing parenthesis", source: "while (true print 1;", message: "Expect ')' after condition."},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := parseSource(test.source); err == nil || !strings.Contains(err.Error(), test.message) {
+				t.Fatalf("parse error: got %v, want %q", err, test.message)
+			}
+		})
+	}
+}
+
 func TestInterpreterReportsUndefinedGlobal(t *testing.T) {
 	var output bytes.Buffer
 	statements, err := parseSource("print beverage; print 2;")
