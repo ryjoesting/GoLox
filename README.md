@@ -65,6 +65,9 @@ Logical `or` and `and` operators short-circuit from left to right and return
 operand values, with `or` having lower precedence than `and`.
 While loops use `while (condition) statement`, re-evaluating the condition
 before each iteration and accepting any statement as the body.
+C-style `for` loops support optional initializer, condition, and increment
+clauses. They are desugared into scoped blocks and `while` loops, so a
+variable declared in `for (var i = ...; ...; ...)` is local to the loop.
 Syntax and runtime errors are written to stderr, and the REPL continues after
 an error.
 

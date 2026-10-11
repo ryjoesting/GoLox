@@ -524,6 +524,98 @@ func TestParserReportsWhileSyntaxErrors(t *testing.T) {
 	}
 }
 
+func TestParserDesugarsForLoop(t *testing.T) {
+	statements, err := parseSource("for (var i = 0; i < 3; i = i + 1) print i;")
+	if err != nil {
+		t.Fatalf("parse for loop: %v", err)
+	}
+	outer, ok := statements[0].(*BlockStmt)
+	if !ok || len(outer.Statements) != 2 {
+		t.Fatalf("for loop AST: got %T with unexpected statements", statements[0])
+	}
+	if _, ok := outer.Statements[0].(*VarStmt); !ok {
+		t.Fatalf("for initializer: got %T, want *VarStmt", outer.Statements[0])
+	}
+	loop, ok := outer.Statements[1].(*WhileStmt)
+	if !ok {
+		t.Fatalf("for loop body: got %T, want *WhileStmt", outer.Statements[1])
+	}
+	body, ok := loop.Body.(*BlockStmt)
+	if !ok || len(body.Statements) != 2 {
+		t.Fatalf("for loop increment block: got %T with unexpected statements", loop.Body)
+	}
+	if _, ok := body.Statements[1].(*ExpressionStmt); !ok {
+		t.Fatalf("for increment: got %T, want *ExpressionStmt", body.Statements[1])
+	}
+}
+
+func TestInterpreterExecutesForLoop(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("for (var i = 0; i < 3; i = i + 1) print i;")
+	if err != nil {
+		t.Fatalf("parse for loop: %v", err)
+	}
+	if err := NewInterpreter(&output).Interpret(statements); err != nil {
+		t.Fatalf("interpret for loop: %v", err)
+	}
+	if got, want := output.String(), "0\n1\n2\n"; got != want {
+		t.Fatalf("for output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterForLoopSupportsOmittedClauses(t *testing.T) {
+	var output bytes.Buffer
+	source := `var i = 0; for (; i < 3;) { print i; i = i + 1; }`
+	statements, err := parseSource(source)
+	if err != nil {
+		t.Fatalf("parse omitted for clauses: %v", err)
+	}
+	if err := NewInterpreter(&output).Interpret(statements); err != nil {
+		t.Fatalf("interpret omitted for clauses: %v", err)
+	}
+	if got, want := output.String(), "0\n1\n2\n"; got != want {
+		t.Fatalf("omitted clause output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterForLoopInitializerIsScoped(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource(`for (var i = 0; i < 1; i = i + 1) print i; print i;`)
+	if err != nil {
+		t.Fatalf("parse scoped for loop: %v", err)
+	}
+	err = NewInterpreter(&output).Interpret(statements)
+	if err == nil {
+		t.Fatal("interpret succeeded, want out-of-scope runtime error")
+	}
+	if got, want := err.Error(), "[line 1] RuntimeError at 'i': Undefined variable 'i'."; got != want {
+		t.Fatalf("scope runtime error: got %q, want %q", got, want)
+	}
+	if got, want := output.String(), "0\n"; got != want {
+		t.Fatalf("scope output: got %q, want %q", got, want)
+	}
+}
+
+func TestParserReportsForSyntaxErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		source  string
+		message string
+	}{
+		{name: "missing opening parenthesis", source: "for var i = 0; i < 1; i = i + 1 print i;", message: "Expect '(' after 'for'."},
+		{name: "missing condition semicolon", source: "for (; true) print 1;", message: "Expect ';' after loop condition."},
+		{name: "missing closing parenthesis", source: "for (;; 1 print 1;", message: "Expect ')' after for clauses."},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := parseSource(test.source); err == nil || !strings.Contains(err.Error(), test.message) {
+				t.Fatalf("parse error: got %v, want %q", err, test.message)
+			}
+		})
+	}
+}
+
 func TestInterpreterReportsUndefinedGlobal(t *testing.T) {
 	var output bytes.Buffer
 	statements, err := parseSource("print beverage; print 2;")
