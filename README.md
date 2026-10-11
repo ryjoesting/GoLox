@@ -58,6 +58,11 @@ the assigned value; assignment is right-associative and cannot create a new
 variable. Braced blocks create lexical scopes, so variables declared inside a
 block are local to it; nested scopes can read and assign enclosing variables,
 and inner declarations shadow outer ones.
+Conditional statements use `if (condition) statement` with an optional `else`
+branch. Only the selected branch executes, and an `else` binds to the nearest
+unmatched `if`.
+Logical `or` and `and` operators short-circuit from left to right and return
+operand values, with `or` having lower precedence than `and`.
 Syntax and runtime errors are written to stderr, and the REPL continues after
 an error.
 
@@ -127,8 +132,9 @@ The parser uses recursive descent with precedence levels for comma, conditional,
 equality, comparison, term, factor, unary, and primary expressions, then wraps
 expressions in declarations, expression statements, or print statements. The
 interpreter executes multiple statements in order, evaluates literals,
-operators, global variables, assignments, and lexical block scopes through a
-chained environment abstraction, and reports runtime errors with operator,
+operators, logical operators, global variables, assignments, lexical block
+scopes, and conditionals through a chained environment abstraction, and
+reports runtime errors with operator,
 variable, and line context.
 Statement-level synchronization recovers at semicolons and known statement
 starters.

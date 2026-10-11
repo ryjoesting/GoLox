@@ -11,6 +11,7 @@ type ExprVisitor interface {
 	VisitConditionalExpr(expression *Conditional) any
 	VisitGroupingExpr(expression *Grouping) any
 	VisitLiteralExpr(expression *Literal) any
+	VisitLogicalExpr(expression *Logical) any
 	VisitUnaryExpr(expression *Unary) any
 	VisitVariableExpr(expression *Variable) any
 }
@@ -68,6 +69,18 @@ func (*Literal) isExpr() {}
 
 func (expression *Literal) Accept(visitor ExprVisitor) any {
 	return visitor.VisitLiteralExpr(expression)
+}
+
+type Logical struct {
+	Left     Expr
+	Operator *Token
+	Right    Expr
+}
+
+func (*Logical) isExpr() {}
+
+func (expression *Logical) Accept(visitor ExprVisitor) any {
+	return visitor.VisitLogicalExpr(expression)
 }
 
 type Unary struct {

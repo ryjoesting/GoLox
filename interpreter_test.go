@@ -38,6 +38,34 @@ func TestInterpreterEvaluatesExpressions(t *testing.T) {
 		{source: "1, 2, 3", want: float64(3)},
 		{source: "true ? 1 : 2", want: float64(1)},
 		{source: "false ? 1 : 2", want: float64(2)},
+		{source: `"hi" or 2`, want: "hi"},
+		{source: `nil or "yes"`, want: "yes"},
+		{source: `false and "no"`, want: false},
+		{source: `true and "yes"`, want: "yes"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.source, func(t *testing.T) {
+			got, err := interpretSource(test.source)
+			if err != nil {
+				t.Fatalf("interpret %q: unexpected error: %v", test.source, err)
+			}
+			if got != test.want {
+				t.Fatalf("interpret %q: got %#v, want %#v", test.source, got, test.want)
+			}
+		})
+	}
+}
+
+func TestInterpreterLogicalOperatorsShortCircuit(t *testing.T) {
+	tests := []struct {
+		source string
+		want   any
+	}{
+		{source: `true or missing`, want: true},
+		{source: `false and missing`, want: false},
+		{source: `nil or "fallback"`, want: "fallback"},
+		{source: `true and 42`, want: float64(42)},
 	}
 
 	for _, test := range tests {

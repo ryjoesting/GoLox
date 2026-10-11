@@ -43,6 +43,7 @@ func TestParserAssociativity(t *testing.T) {
 	assertParsedExpression(t, "1, 2, 3", "(, (, 1 2) 3)")
 	assertParsedExpression(t, "true ? 1 : false ? 2 : 3", "(?: true 1 (?: false 2 3))")
 	assertParsedExpression(t, "a = b = 3", "(= a (= b 3))")
+	assertParsedExpression(t, "true or false and false", "(or true (and false false))")
 }
 
 func TestParserCommaAndConditionalPrecedence(t *testing.T) {
@@ -50,6 +51,7 @@ func TestParserCommaAndConditionalPrecedence(t *testing.T) {
 	assertParsedExpression(t, "true ? 1, 2 : 3", "(?: true (, 1 2) 3)")
 	assertParsedExpression(t, "1 == 2 ? 3 : 4", "(?: (== 1 2) 3 4)")
 	assertParsedExpression(t, "a = 1, 2", "(= a (, 1 2))")
+	assertParsedExpression(t, "1 == 2 and 3 < 4", "(and (== 1 2) (< 3 4))")
 }
 
 func TestParserPrimaryExpressions(t *testing.T) {

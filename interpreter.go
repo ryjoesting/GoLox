@@ -62,8 +62,38 @@ func (interpreter *Interpreter) VisitLiteralExpr(expression *Literal) any {
 	return expression.Value
 }
 
+func (interpreter *Interpreter) VisitLogicalExpr(expression *Logical) any {
+	left := interpreter.evaluate(expression.Left)
+	if interpreter.runtimeError != nil {
+		return nil
+	}
+
+	if expression.Operator.Type == OR {
+		if isTruthy(left) {
+			return left
+		}
+	} else if !isTruthy(left) {
+		return left
+	}
+
+	return interpreter.evaluate(expression.Right)
+}
+
 func (interpreter *Interpreter) VisitBlockStmt(statement *BlockStmt) any {
 	interpreter.executeBlock(statement.Statements, NewEnvironment(interpreter.environment))
+	return nil
+}
+
+func (interpreter *Interpreter) VisitIfStmt(statement *IfStmt) any {
+	condition := interpreter.evaluate(statement.Condition)
+	if interpreter.runtimeError != nil {
+		return nil
+	}
+	if isTruthy(condition) {
+		interpreter.execute(statement.ThenBranch)
+	} else if statement.ElseBranch != nil {
+		interpreter.execute(statement.ElseBranch)
+	}
 	return nil
 }
 

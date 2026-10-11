@@ -59,10 +59,40 @@ func (parser *Parser) statement() (Stmt, error) {
 	if parser.match(LEFT_BRACE) {
 		return parser.blockStatement()
 	}
+	if parser.match(IF) {
+		return parser.ifStatement()
+	}
 	if parser.match(PRINT) {
 		return parser.printStatement()
 	}
 	return parser.expressionStatement()
+}
+
+func (parser *Parser) ifStatement() (Stmt, error) {
+	if _, err := parser.consume(LEFT_PAREN, "Expect '(' after 'if'."); err != nil {
+		return nil, err
+	}
+	condition, err := parser.expression()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := parser.consume(RIGHT_PAREN, "Expect ')' after if condition."); err != nil {
+		return nil, err
+	}
+
+	thenBranch, err := parser.statement()
+	if err != nil {
+		return nil, err
+	}
+
+	var elseBranch Stmt
+	if parser.match(ELSE) {
+		elseBranch, err = parser.statement()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &IfStmt{Condition: condition, ThenBranch: thenBranch, ElseBranch: elseBranch}, nil
 }
 
 func (parser *Parser) blockStatement() (Stmt, error) {
@@ -153,7 +183,7 @@ func (parser *Parser) expression() (Expr, error) {
 }
 
 func (parser *Parser) assignment() (Expr, error) {
-	expression, err := parser.comma()
+	expression, err := parser.logicOr()
 	if err != nil {
 		return nil, err
 	}
@@ -173,6 +203,40 @@ func (parser *Parser) assignment() (Expr, error) {
 		return nil, parser.parseError(equals, "Invalid assignment target.")
 	}
 	return &Assign{Name: variable.Name, Value: value}, nil
+}
+
+func (parser *Parser) logicOr() (Expr, error) {
+	expression, err := parser.logicAnd()
+	if err != nil {
+		return nil, err
+	}
+
+	for parser.match(OR) {
+		operator := parser.previous()
+		right, err := parser.logicAnd()
+		if err != nil {
+			return nil, err
+		}
+		expression = &Logical{Left: expression, Operator: operator, Right: right}
+	}
+	return expression, nil
+}
+
+func (parser *Parser) logicAnd() (Expr, error) {
+	expression, err := parser.comma()
+	if err != nil {
+		return nil, err
+	}
+
+	for parser.match(AND) {
+		operator := parser.previous()
+		right, err := parser.comma()
+		if err != nil {
+			return nil, err
+		}
+		expression = &Logical{Left: expression, Operator: operator, Right: right}
+	}
+	return expression, nil
 }
 
 func (parser *Parser) comma() (Expr, error) {

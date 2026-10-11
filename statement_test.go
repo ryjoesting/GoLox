@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -316,6 +317,113 @@ func TestInterpreterRestoresEnvironmentAfterBlockError(t *testing.T) {
 	}
 	if got, want := err.Error(), "[line 1] RuntimeError at 'missing': Undefined variable 'missing'."; got != want {
 		t.Fatalf("runtime error: got %q, want %q", got, want)
+	}
+}
+
+func TestParserBuildsIfStatement(t *testing.T) {
+	statements, err := parseSource("if (true) print \"yes\"; else print \"no\";")
+	if err != nil {
+		t.Fatalf("parse if statement: %v", err)
+	}
+	if len(statements) != 1 {
+		t.Fatalf("got %d statements, want 1", len(statements))
+	}
+	ifStatement, ok := statements[0].(*IfStmt)
+	if !ok {
+		t.Fatalf("statement type: got %T, want *IfStmt", statements[0])
+	}
+	if ifStatement.ElseBranch == nil {
+		t.Fatal("else branch is nil, want a branch")
+	}
+}
+
+func TestInterpreterExecutesSelectedIfBranch(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{name: "then", source: `if (true) print "then"; else print "else";`, want: "then\n"},
+		{name: "else", source: `if (false) print "then"; else print "else";`, want: "else\n"},
+		{name: "nil is falsey", source: `if (nil) print "then"; else print "else";`, want: "else\n"},
+		{name: "number is truthy", source: `if (0) print "then"; else print "else";`, want: "then\n"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var output bytes.Buffer
+			statements, err := parseSource(test.source)
+			if err != nil {
+				t.Fatalf("parse if statement: %v", err)
+			}
+			if err := NewInterpreter(&output).Interpret(statements); err != nil {
+				t.Fatalf("interpret if statement: %v", err)
+			}
+			if got := output.String(); got != test.want {
+				t.Fatalf("if output: got %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestInterpreterIfSupportsBlockBranches(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource(`if (true) { var message = "yes"; print message; } else { print "no"; }`)
+	if err != nil {
+		t.Fatalf("parse block branches: %v", err)
+	}
+	if err := NewInterpreter(&output).Interpret(statements); err != nil {
+		t.Fatalf("interpret block branches: %v", err)
+	}
+	if got, want := output.String(), "yes\n"; got != want {
+		t.Fatalf("block branch output: got %q, want %q", got, want)
+	}
+}
+
+func TestParserBindsElseToNearestIf(t *testing.T) {
+	statements, err := parseSource(`if (true) if (false) print "inner"; else print "nearest";`)
+	if err != nil {
+		t.Fatalf("parse nested if: %v", err)
+	}
+	var output bytes.Buffer
+	if err := NewInterpreter(&output).Interpret(statements); err != nil {
+		t.Fatalf("interpret nested if: %v", err)
+	}
+	if got, want := output.String(), "nearest\n"; got != want {
+		t.Fatalf("dangling else output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterSkipsUnselectedIfBranch(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource(`if (true) print "selected"; else print missing;`)
+	if err != nil {
+		t.Fatalf("parse skipped branch: %v", err)
+	}
+	if err := NewInterpreter(&output).Interpret(statements); err != nil {
+		t.Fatalf("interpret skipped branch: %v", err)
+	}
+	if got, want := output.String(), "selected\n"; got != want {
+		t.Fatalf("skipped branch output: got %q, want %q", got, want)
+	}
+}
+
+func TestParserReportsIfSyntaxErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		source  string
+		message string
+	}{
+		{name: "missing opening parenthesis", source: "if true print 1;", message: "Expect '(' after 'if'."},
+		{name: "missing closing parenthesis", source: "if (true print 1;", message: "Expect ')' after if condition."},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := parseSource(test.source); err == nil || !strings.Contains(err.Error(), test.message) {
+				t.Fatalf("parse error: got %v, want %q", err, test.message)
+			}
+		})
 	}
 }
 

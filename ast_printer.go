@@ -38,6 +38,10 @@ func (AstPrinter) VisitLiteralExpr(expression *Literal) any {
 	return fmt.Sprint(expression.Value)
 }
 
+func (printer AstPrinter) VisitLogicalExpr(expression *Logical) any {
+	return printer.parenthesize(expression.Operator.Lexeme, expression.Left, expression.Right)
+}
+
 func (AstPrinter) VisitVariableExpr(expression *Variable) any {
 	return expression.Name.Lexeme
 }
