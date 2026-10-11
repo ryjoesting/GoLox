@@ -51,8 +51,10 @@ The program parses and executes complete Lox statements. Expression statements
 must end with `;` and discard their result. Print statements display their
 evaluated value, for example `print 1 + 2;` prints `3`. Global variables can
 be declared with `var name = value;` and read by name; declarations without an
-initializer contain `nil`. Syntax and runtime errors are written to stderr,
-and the REPL continues after an error.
+initializer contain `nil`. Global bindings are stored in an environment for
+the lifetime of the interpreter, and redefining a global replaces its value.
+Syntax and runtime errors are written to stderr, and the REPL continues after
+an error.
 
 When running a file, the process uses exit code `65` for file or syntax errors,
 `70` for runtime errors, and `0` for success.
@@ -120,9 +122,10 @@ The parser uses recursive descent with precedence levels for comma, conditional,
 equality, comparison, term, factor, unary, and primary expressions, then wraps
 expressions in declarations, expression statements, or print statements. The
 interpreter executes multiple statements in order, evaluates literals,
-operators, and global variables, and reports runtime errors with operator,
-variable, and line context. Statement-level synchronization recovers at
-semicolons and known statement starters.
+operators, and global variables through a dedicated environment abstraction,
+and reports runtime errors with operator, variable, and line context.
+Statement-level synchronization recovers at semicolons and known statement
+starters.
 
 ## Project Files
 
@@ -134,6 +137,8 @@ semicolons and known statement starters.
 - `ast_test.go` - AST structure and printer tests.
 - `parser.go` - Recursive-descent program/statement parser and structured parse errors.
 - `parser_test.go` - Parser precedence, associativity, primary expression, and syntax error tests.
+- `environment.go` - Global name-to-value environment and undefined-variable lookup errors.
+- `environment_test.go` - Environment definition, redefinition, nil, and lookup-error tests.
 - `interpreter.go` - Expression/statement evaluator, runtime errors, and value formatting.
 - `interpreter_test.go` - Expression evaluation, runtime error, and pipeline tests.
 - `stmt_test.go` - Statement parsing and execution tests.

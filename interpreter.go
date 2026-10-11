@@ -10,7 +10,7 @@ import (
 type Interpreter struct {
 	runtimeError error
 	Output       io.Writer
-	globals      map[string]any
+	environment  *Environment
 }
 
 var interpreter = NewInterpreter(nil)
@@ -19,7 +19,7 @@ func NewInterpreter(output io.Writer) *Interpreter {
 	if output == nil {
 		output = os.Stdout
 	}
-	return &Interpreter{Output: output, globals: make(map[string]any)}
+	return &Interpreter{Output: output, environment: NewEnvironment()}
 }
 
 type RuntimeError struct {
@@ -63,9 +63,10 @@ func (interpreter *Interpreter) VisitLiteralExpr(expression *Literal) any {
 }
 
 func (interpreter *Interpreter) VisitVariableExpr(expression *Variable) any {
-	value, ok := interpreter.globals[expression.Name.Lexeme]
-	if !ok {
-		return interpreter.fail(expression.Name, fmt.Sprintf("Undefined variable '%s'.", expression.Name.Lexeme))
+	value, err := interpreter.environment.Get(expression.Name)
+	if err != nil {
+		interpreter.runtimeError = err
+		return nil
 	}
 	return value
 }
@@ -190,7 +191,7 @@ func (interpreter *Interpreter) VisitVarStmt(statement *VarStmt) any {
 			return nil
 		}
 	}
-	interpreter.globals[statement.Name.Lexeme] = value
+	interpreter.environment.Define(statement.Name.Lexeme, value)
 	return nil
 }
 

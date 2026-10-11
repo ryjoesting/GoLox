@@ -143,6 +143,22 @@ func TestInterpreterGlobalsPersistAcrossInterpretCalls(t *testing.T) {
 	}
 }
 
+func TestInterpreterAllowsGlobalRedefinition(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("var a = \"before\"; print a; var a = \"after\"; print a;")
+	if err != nil {
+		t.Fatalf("parse statements: %v", err)
+	}
+
+	statementInterpreter := NewInterpreter(&output)
+	if err := statementInterpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret statements: %v", err)
+	}
+	if got, want := output.String(), "before\nafter\n"; got != want {
+		t.Fatalf("redefined global output: got %q, want %q", got, want)
+	}
+}
+
 func TestInterpreterReportsUndefinedGlobal(t *testing.T) {
 	var output bytes.Buffer
 	statements, err := parseSource("print beverage; print 2;")
