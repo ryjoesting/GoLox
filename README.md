@@ -55,7 +55,9 @@ initializer contain `nil`. Global bindings are stored in an environment for
 the lifetime of the interpreter, and redefining a global replaces its value.
 Assignments such as `name = value;` update existing variables and evaluate to
 the assigned value; assignment is right-associative and cannot create a new
-variable.
+variable. Braced blocks create lexical scopes, so variables declared inside a
+block are local to it; nested scopes can read and assign enclosing variables,
+and inner declarations shadow outer ones.
 Syntax and runtime errors are written to stderr, and the REPL continues after
 an error.
 
@@ -125,9 +127,9 @@ The parser uses recursive descent with precedence levels for comma, conditional,
 equality, comparison, term, factor, unary, and primary expressions, then wraps
 expressions in declarations, expression statements, or print statements. The
 interpreter executes multiple statements in order, evaluates literals,
-operators, global variables, and assignments through a dedicated environment
-abstraction, and reports runtime errors with operator, variable, and line
-context.
+operators, global variables, assignments, and lexical block scopes through a
+chained environment abstraction, and reports runtime errors with operator,
+variable, and line context.
 Statement-level synchronization recovers at semicolons and known statement
 starters.
 
@@ -142,7 +144,7 @@ starters.
 - `parser.go` - Recursive-descent program/statement parser and structured parse errors.
 - `parser_test.go` - Parser precedence, associativity, primary expression, and syntax error tests.
 - `environment.go` - Global name-to-value environment and undefined-variable lookup errors.
-- `environment_test.go` - Environment definition, redefinition, nil, and lookup-error tests.
+- `environment_test.go` - Environment definition, nesting, assignment, nil, and lookup-error tests.
 - `interpreter.go` - Expression/statement evaluator, runtime errors, and value formatting.
 - `interpreter_test.go` - Expression evaluation, runtime error, and pipeline tests.
 - `stmt_test.go` - Statement parsing and execution tests.

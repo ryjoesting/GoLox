@@ -64,6 +64,39 @@ func TestEnvironmentRejectsAssignmentToUndefinedValue(t *testing.T) {
 	}
 }
 
+func TestEnvironmentFindsEnclosingValues(t *testing.T) {
+	global := NewEnvironment()
+	local := NewEnvironment(global)
+	name := NewToken(IDENTIFIER, "answer", "answer", 1)
+	global.Define(name.Lexeme, 42.0)
+
+	value, err := local.Get(name)
+	if err != nil {
+		t.Fatalf("get enclosing value: %v", err)
+	}
+	if got, want := value, 42.0; got != want {
+		t.Fatalf("enclosing value: got %v, want %v", got, want)
+	}
+}
+
+func TestEnvironmentAssignsEnclosingValues(t *testing.T) {
+	global := NewEnvironment()
+	local := NewEnvironment(global)
+	name := NewToken(IDENTIFIER, "answer", "answer", 1)
+	global.Define(name.Lexeme, 1.0)
+
+	if err := local.Assign(name, 2.0); err != nil {
+		t.Fatalf("assign enclosing value: %v", err)
+	}
+	value, err := global.Get(name)
+	if err != nil {
+		t.Fatalf("get assigned enclosing value: %v", err)
+	}
+	if got, want := value, 2.0; got != want {
+		t.Fatalf("assigned enclosing value: got %v, want %v", got, want)
+	}
+}
+
 func TestEnvironmentStoresNil(t *testing.T) {
 	environment := NewEnvironment()
 	name := NewToken(IDENTIFIER, "empty", "empty", 1)

@@ -56,10 +56,41 @@ func (parser *Parser) declaration() (Stmt, error) {
 }
 
 func (parser *Parser) statement() (Stmt, error) {
+	if parser.match(LEFT_BRACE) {
+		return parser.blockStatement()
+	}
 	if parser.match(PRINT) {
 		return parser.printStatement()
 	}
 	return parser.expressionStatement()
+}
+
+func (parser *Parser) blockStatement() (Stmt, error) {
+	statements := []Stmt{}
+	var firstError error
+
+	for !parser.check(RIGHT_BRACE) && !parser.isAtEnd() {
+		statement, err := parser.declaration()
+		if err != nil {
+			if firstError == nil {
+				firstError = err
+			}
+			parser.synchronize()
+			continue
+		}
+		statements = append(statements, statement)
+	}
+
+	if _, err := parser.consume(RIGHT_BRACE, "Expect '}' after block."); err != nil {
+		if firstError != nil {
+			return nil, firstError
+		}
+		return nil, err
+	}
+	if firstError != nil {
+		return nil, firstError
+	}
+	return &BlockStmt{Statements: statements}, nil
 }
 
 func (parser *Parser) printStatement() (Stmt, error) {
@@ -110,7 +141,7 @@ func (parser *Parser) synchronize() {
 			return
 		}
 		switch parser.peek().Type {
-		case CLASS, FUN, VAR, FOR, IF, WHILE, PRINT, RETURN:
+		case CLASS, FUN, VAR, FOR, IF, WHILE, PRINT, RETURN, RIGHT_BRACE:
 			return
 		}
 		parser.advance()

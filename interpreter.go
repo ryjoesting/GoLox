@@ -62,6 +62,11 @@ func (interpreter *Interpreter) VisitLiteralExpr(expression *Literal) any {
 	return expression.Value
 }
 
+func (interpreter *Interpreter) VisitBlockStmt(statement *BlockStmt) any {
+	interpreter.executeBlock(statement.Statements, NewEnvironment(interpreter.environment))
+	return nil
+}
+
 func (interpreter *Interpreter) VisitAssignExpr(expression *Assign) any {
 	value := interpreter.evaluate(expression.Value)
 	if interpreter.runtimeError != nil {
@@ -205,6 +210,21 @@ func (interpreter *Interpreter) VisitVarStmt(statement *VarStmt) any {
 	}
 	interpreter.environment.Define(statement.Name.Lexeme, value)
 	return nil
+}
+
+func (interpreter *Interpreter) executeBlock(statements []Stmt, environment *Environment) {
+	previous := interpreter.environment
+	interpreter.environment = environment
+	defer func() {
+		interpreter.environment = previous
+	}()
+
+	for _, statement := range statements {
+		interpreter.execute(statement)
+		if interpreter.runtimeError != nil {
+			return
+		}
+	}
 }
 
 func (interpreter *Interpreter) fail(token *Token, message string) any {

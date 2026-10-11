@@ -8,9 +8,20 @@ type Stmt interface {
 }
 
 type StmtVisitor interface {
+	VisitBlockStmt(statement *BlockStmt) any
 	VisitExpressionStmt(statement *ExpressionStmt) any
 	VisitPrintStmt(statement *PrintStmt) any
 	VisitVarStmt(statement *VarStmt) any
+}
+
+type BlockStmt struct {
+	Statements []Stmt
+}
+
+func (*BlockStmt) isStmt() {}
+
+func (statement *BlockStmt) Accept(visitor StmtVisitor) any {
+	return visitor.VisitBlockStmt(statement)
 }
 
 type ExpressionStmt struct {

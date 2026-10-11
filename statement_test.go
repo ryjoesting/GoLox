@@ -208,6 +208,117 @@ func TestInterpreterRejectsUndefinedAssignment(t *testing.T) {
 	}
 }
 
+func TestParserBuildsBlockStatements(t *testing.T) {
+	statements, err := parseSource("{ var a = 1; print a; }")
+	if err != nil {
+		t.Fatalf("parse block: %v", err)
+	}
+	if len(statements) != 1 {
+		t.Fatalf("got %d statements, want 1", len(statements))
+	}
+	block, ok := statements[0].(*BlockStmt)
+	if !ok {
+		t.Fatalf("statement type: got %T, want *BlockStmt", statements[0])
+	}
+	if len(block.Statements) != 2 {
+		t.Fatalf("block statements: got %d, want 2", len(block.Statements))
+	}
+}
+
+func TestInterpreterScopesBlockVariables(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("{ var a = \"inside\"; print a; }")
+	if err != nil {
+		t.Fatalf("parse block: %v", err)
+	}
+
+	statementInterpreter := NewInterpreter(&output)
+	if err := statementInterpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret block: %v", err)
+	}
+	if got, want := output.String(), "inside\n"; got != want {
+		t.Fatalf("block output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterDoesNotExposeBlockVariables(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("{ var a = \"inside\"; } print a;")
+	if err != nil {
+		t.Fatalf("parse block: %v", err)
+	}
+
+	statementInterpreter := NewInterpreter(&output)
+	err = statementInterpreter.Interpret(statements)
+	if err == nil {
+		t.Fatal("interpret succeeded, want an undefined variable error")
+	}
+	if got, want := err.Error(), "[line 1] RuntimeError at 'a': Undefined variable 'a'."; got != want {
+		t.Fatalf("runtime error: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterSupportsShadowingAndEnclosingLookup(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("var a = \"global\"; { var a = \"local\"; print a; } print a;")
+	if err != nil {
+		t.Fatalf("parse scopes: %v", err)
+	}
+
+	statementInterpreter := NewInterpreter(&output)
+	if err := statementInterpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret scopes: %v", err)
+	}
+	if got, want := output.String(), "local\nglobal\n"; got != want {
+		t.Fatalf("scope output: got %q, want %q", got, want)
+	}
+
+	output.Reset()
+	statements, err = parseSource("var global = \"outside\"; { var local = \"inside\"; print global + local; }")
+	if err != nil {
+		t.Fatalf("parse enclosing lookup: %v", err)
+	}
+	if err := statementInterpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret enclosing lookup: %v", err)
+	}
+	if got, want := output.String(), "outsideinside\n"; got != want {
+		t.Fatalf("enclosing lookup output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterAssignsNearestEnclosingVariable(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("var a = \"global\"; { a = \"updated\"; } print a;")
+	if err != nil {
+		t.Fatalf("parse enclosing assignment: %v", err)
+	}
+
+	statementInterpreter := NewInterpreter(&output)
+	if err := statementInterpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret enclosing assignment: %v", err)
+	}
+	if got, want := output.String(), "updated\n"; got != want {
+		t.Fatalf("enclosing assignment output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterRestoresEnvironmentAfterBlockError(t *testing.T) {
+	var output bytes.Buffer
+	statements, err := parseSource("{ print missing; } print missing;")
+	if err != nil {
+		t.Fatalf("parse block error: %v", err)
+	}
+
+	statementInterpreter := NewInterpreter(&output)
+	err = statementInterpreter.Interpret(statements)
+	if err == nil {
+		t.Fatal("interpret succeeded, want a runtime error")
+	}
+	if got, want := err.Error(), "[line 1] RuntimeError at 'missing': Undefined variable 'missing'."; got != want {
+		t.Fatalf("runtime error: got %q, want %q", got, want)
+	}
+}
+
 func TestInterpreterReportsUndefinedGlobal(t *testing.T) {
 	var output bytes.Buffer
 	statements, err := parseSource("print beverage; print 2;")
