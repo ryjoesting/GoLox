@@ -8,9 +8,10 @@ import (
 )
 
 type Interpreter struct {
-	runtimeError error
-	Output       io.Writer
-	environment  *Environment
+	runtimeError  error
+	Output        io.Writer
+	environment   *Environment
+	functionDepth int
 }
 
 var interpreter = NewInterpreter(nil)
@@ -181,6 +182,7 @@ func (interpreter *Interpreter) VisitBinaryExpr(expression *Binary) any {
 				return leftValue + rightValue
 			}
 		}
+
 		return interpreter.fail(expression.Operator, "Operands must be two numbers or two strings.")
 	case MINUS, SLASH, STAR:
 		leftValue, rightValue, ok := interpreter.checkNumberOperands(expression.Operator, left, right)
@@ -219,6 +221,32 @@ func (interpreter *Interpreter) VisitBinaryExpr(expression *Binary) any {
 	}
 }
 
+func (interpreter *Interpreter) VisitCallExpr(expression *Call) any {
+	callee := interpreter.evaluate(expression.Callee)
+	if interpreter.runtimeError != nil {
+		return nil
+	}
+
+	arguments := make([]any, 0, len(expression.Arguments))
+	for _, argument := range expression.Arguments {
+		arguments = append(arguments, interpreter.evaluate(argument))
+		if interpreter.runtimeError != nil {
+			return nil
+		}
+	}
+
+	function, ok := callee.(LoxCallable)
+	if !ok {
+		return interpreter.fail(expression.Paren, "Can only call functions and classes.")
+	}
+	if len(arguments) != function.Arity() {
+		return interpreter.fail(expression.Paren, fmt.Sprintf(
+			"Expected %d arguments but got %d.", function.Arity(), len(arguments),
+		))
+	}
+	return function.Call(interpreter, arguments)
+}
+
 func (interpreter *Interpreter) VisitConditionalExpr(expression *Conditional) any {
 	condition := interpreter.evaluate(expression.Condition)
 	if interpreter.runtimeError != nil {
@@ -235,12 +263,33 @@ func (interpreter *Interpreter) VisitExpressionStmt(statement *ExpressionStmt) a
 	return nil
 }
 
+func (interpreter *Interpreter) VisitFunctionStmt(statement *FunctionStmt) any {
+	function := NewLoxFunction(statement, interpreter.environment)
+	interpreter.environment.Define(statement.Name.Lexeme, function)
+	return nil
+}
+
 func (interpreter *Interpreter) VisitPrintStmt(statement *PrintStmt) any {
 	value := interpreter.evaluate(statement.Expression)
 	if interpreter.runtimeError == nil {
 		fmt.Fprintln(interpreter.Output, stringify(value))
 	}
 	return nil
+}
+
+func (interpreter *Interpreter) VisitReturnStmt(statement *ReturnStmt) any {
+	if interpreter.functionDepth == 0 {
+		return interpreter.fail(statement.Keyword, "Can't return from top-level code.")
+	}
+
+	var value any
+	if statement.Value != nil {
+		value = interpreter.evaluate(statement.Value)
+		if interpreter.runtimeError != nil {
+			return nil
+		}
+	}
+	panic(&returnSignal{value: value})
 }
 
 func (interpreter *Interpreter) VisitVarStmt(statement *VarStmt) any {

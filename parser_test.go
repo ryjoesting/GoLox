@@ -62,6 +62,42 @@ func TestParserPrimaryExpressions(t *testing.T) {
 	assertParsedExpression(t, "(1 + 2)", "(group (+ 1 2))")
 }
 
+func TestParserCallExpressions(t *testing.T) {
+	assertParsedExpression(t, "getCallback()()", "(call (call getCallback))")
+	assertParsedExpression(t, "add(1, 2 * 3)", "(call add 1 (* 2 3))")
+}
+
+func TestParserBuildsFunctionDeclarations(t *testing.T) {
+	statements, err := parseSource("fun add(a, b) { return a + b; }")
+	if err != nil {
+		t.Fatalf("parse function: %v", err)
+	}
+	function, ok := statements[0].(*FunctionStmt)
+	if !ok {
+		t.Fatalf("statement type: got %T, want *FunctionStmt", statements[0])
+	}
+	if function.Name.Lexeme != "add" || len(function.Parameters) != 2 || len(function.Body) != 1 {
+		t.Fatalf("unexpected function declaration: %#v", function)
+	}
+	if _, ok := function.Body[0].(*ReturnStmt); !ok {
+		t.Fatalf("function body statement: got %T, want *ReturnStmt", function.Body[0])
+	}
+}
+
+func TestParserLimitsFunctionArgumentsAndParameters(t *testing.T) {
+	arguments := strings.TrimSuffix(strings.Repeat("1,", 256), ",")
+	if _, err := parseSource("f(" + arguments + ");"); err == nil ||
+		!strings.Contains(err.Error(), "Can't have more than 255 arguments.") {
+		t.Fatalf("argument limit error: got %v", err)
+	}
+
+	parameters := strings.TrimSuffix(strings.Repeat("a,", 256), ",")
+	if _, err := parseSource("fun f(" + parameters + ") {}"); err == nil ||
+		!strings.Contains(err.Error(), "Can't have more than 255 parameters.") {
+		t.Fatalf("parameter limit error: got %v", err)
+	}
+}
+
 func TestParserSyntaxErrors(t *testing.T) {
 	tests := []struct {
 		name    string

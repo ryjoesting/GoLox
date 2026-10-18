@@ -10,8 +10,10 @@ type Stmt interface {
 type StmtVisitor interface {
 	VisitBlockStmt(statement *BlockStmt) any
 	VisitExpressionStmt(statement *ExpressionStmt) any
+	VisitFunctionStmt(statement *FunctionStmt) any
 	VisitIfStmt(statement *IfStmt) any
 	VisitPrintStmt(statement *PrintStmt) any
+	VisitReturnStmt(statement *ReturnStmt) any
 	VisitVarStmt(statement *VarStmt) any
 	VisitWhileStmt(statement *WhileStmt) any
 }
@@ -28,6 +30,18 @@ func (statement *BlockStmt) Accept(visitor StmtVisitor) any {
 
 type ExpressionStmt struct {
 	Expression Expr
+}
+
+type FunctionStmt struct {
+	Name       *Token
+	Parameters []*Token
+	Body       []Stmt
+}
+
+func (*FunctionStmt) isStmt() {}
+
+func (statement *FunctionStmt) Accept(visitor StmtVisitor) any {
+	return visitor.VisitFunctionStmt(statement)
 }
 
 func (*ExpressionStmt) isStmt() {}
@@ -50,6 +64,17 @@ func (statement *IfStmt) Accept(visitor StmtVisitor) any {
 
 type PrintStmt struct {
 	Expression Expr
+}
+
+type ReturnStmt struct {
+	Keyword *Token
+	Value   Expr
+}
+
+func (*ReturnStmt) isStmt() {}
+
+func (statement *ReturnStmt) Accept(visitor StmtVisitor) any {
+	return visitor.VisitReturnStmt(statement)
 }
 
 func (*PrintStmt) isStmt() {}

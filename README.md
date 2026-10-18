@@ -58,6 +58,12 @@ the assigned value; assignment is right-associative and cannot create a new
 variable. Braced blocks create lexical scopes, so variables declared inside a
 block are local to it; nested scopes can read and assign enclosing variables,
 and inner declarations shadow outer ones.
+Function declarations use `fun name(parameters) { ... }`; functions are
+first-class values, support recursion and closures, and return with `return
+expression;` or `return;`. Calls evaluate arguments left to right, require an
+exact parameter count, and support at most 255 arguments. Returning from
+top-level code, calling a non-callable value, or passing the wrong number of
+arguments reports a runtime error.
 Conditional statements use `if (condition) statement` with an optional `else`
 branch. Only the selected branch executes, and an `else` binds to the nearest
 unmatched `if`.
@@ -128,18 +134,19 @@ go test -run TestInterpreter -v
 ## Current Implementation
 
 The project currently includes the scanner and the expression AST from the Lox
-grammar. The AST uses a sealed `Expr` interface with `Binary`, `Grouping`,
-`Literal`, and `Unary` expression nodes. An `ExprVisitor` interface provides
+grammar. The AST uses a sealed `Expr` interface with `Binary`, `Call`,
+`Grouping`, `Literal`, and `Unary` expression nodes. An `ExprVisitor` interface provides
 double-dispatch for operations such as printing, and `AstPrinter` renders
 expressions as parenthesized tree structures such as `(* (- 123) (group 45.67))`.
 
 The parser uses recursive descent with precedence levels for comma, conditional,
 equality, comparison, term, factor, unary, and primary expressions, then wraps
-expressions in declarations, expression statements, or print statements. The
-interpreter executes multiple statements in order, evaluates literals,
-operators, logical operators, global variables, assignments, lexical block
-scopes, and conditionals through a chained environment abstraction, and
-reports runtime errors with operator,
+expressions in calls and declarations, expression statements, print statements,
+or function declarations. The interpreter executes multiple statements in
+order, evaluates literals, operators, logical operators, global variables,
+assignments, lexical block scopes, conditionals, function calls, returns,
+recursion, and closures through a chained environment abstraction, and reports
+runtime errors with operator,
 variable, and line context.
 Statement-level synchronization recovers at semicolons and known statement
 starters.
@@ -157,6 +164,7 @@ starters.
 - `environment.go` - Global name-to-value environment and undefined-variable lookup errors.
 - `environment_test.go` - Environment definition, nesting, assignment, nil, and lookup-error tests.
 - `interpreter.go` - Expression/statement evaluator, runtime errors, and value formatting.
+- `function.go` - Callable interface and user-defined function closures.
 - `interpreter_test.go` - Expression evaluation, runtime error, and pipeline tests.
 - `stmt_test.go` - Statement parsing and execution tests.
 - `scanner_test.go` - Built-in Go tests for scanner behavior.

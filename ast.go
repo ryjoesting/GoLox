@@ -8,6 +8,7 @@ type Expr interface {
 type ExprVisitor interface {
 	VisitAssignExpr(expression *Assign) any
 	VisitBinaryExpr(expression *Binary) any
+	VisitCallExpr(expression *Call) any
 	VisitConditionalExpr(expression *Conditional) any
 	VisitGroupingExpr(expression *Grouping) any
 	VisitLiteralExpr(expression *Literal) any
@@ -31,6 +32,18 @@ type Binary struct {
 	Left     Expr
 	Operator *Token
 	Right    Expr
+}
+
+type Call struct {
+	Callee    Expr
+	Paren     *Token
+	Arguments []Expr
+}
+
+func (*Call) isExpr() {}
+
+func (expression *Call) Accept(visitor ExprVisitor) any {
+	return visitor.VisitCallExpr(expression)
 }
 
 func (*Binary) isExpr() {}

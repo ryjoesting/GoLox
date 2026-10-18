@@ -5,13 +5,28 @@ import "testing"
 func TestExpressionNodesImplementExpr(t *testing.T) {
 	var expressions = []Expr{
 		&Binary{},
+		&Call{},
 		&Grouping{},
 		&Literal{},
 		&Unary{},
 	}
 
-	if len(expressions) != 4 {
-		t.Fatalf("got %d expression nodes, want 4", len(expressions))
+	if len(expressions) != 5 {
+		t.Fatalf("got %d expression nodes, want 5", len(expressions))
+	}
+}
+
+func TestAstPrinterPrintsCallExpressions(t *testing.T) {
+	expression := &Call{
+		Callee: &Variable{Name: NewToken(IDENTIFIER, "add", nil, 1)},
+		Arguments: []Expr{
+			&Literal{Value: float64(1)},
+			&Literal{Value: float64(2)},
+		},
+	}
+
+	if got, want := (AstPrinter{}).Print(expression), "(call add 1 2)"; got != want {
+		t.Fatalf("printed call: got %q, want %q", got, want)
 	}
 }
 

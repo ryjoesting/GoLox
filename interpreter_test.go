@@ -91,6 +91,96 @@ func TestInterpreterConditionalEvaluationIsLazy(t *testing.T) {
 	}
 }
 
+func TestInterpreterExecutesFunctionsAndReturns(t *testing.T) {
+	var output strings.Builder
+	statements, err := parseSource(`
+			fun add(a, b) { return a + b; }
+			print add(2, 3);
+			print add(4, 5);
+		`)
+	if err != nil {
+		t.Fatalf("parse functions: %v", err)
+	}
+	statementInterpreter := NewInterpreter(&output)
+	if err := statementInterpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret functions: %v", err)
+	}
+	if got, want := output.String(), "5\n9\n"; got != want {
+		t.Fatalf("function output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterStringifiesFunctions(t *testing.T) {
+	var output strings.Builder
+	statements, err := parseSource("fun greet() {} print greet;")
+	if err != nil {
+		t.Fatalf("parse function: %v", err)
+	}
+	if err := NewInterpreter(&output).Interpret(statements); err != nil {
+		t.Fatalf("interpret function: %v", err)
+	}
+	if got, want := output.String(), "<fn greet>\n"; got != want {
+		t.Fatalf("function stringification: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterSupportsClosuresAndRecursion(t *testing.T) {
+	var output strings.Builder
+	statements, err := parseSource(`
+			fun makeCounter() {
+				var count = 0;
+				fun increment() {
+					count = count + 1;
+					return count;
+				}
+				return increment;
+			}
+			var counter = makeCounter();
+			print counter();
+			print counter();
+			fun factorial(n) {
+				if (n <= 1) return 1;
+				return n * factorial(n - 1);
+			}
+			print factorial(5);
+		`)
+	if err != nil {
+		t.Fatalf("parse closure: %v", err)
+	}
+	statementInterpreter := NewInterpreter(&output)
+	if err := statementInterpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret closure: %v", err)
+	}
+	if got, want := output.String(), "1\n2\n120\n"; got != want {
+		t.Fatalf("closure output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterFunctionErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		source  string
+		message string
+	}{
+		{name: "non-callable", source: `1();`, message: "Can only call functions and classes."},
+		{name: "too few arguments", source: `fun one(a) {} one();`, message: "Expected 1 arguments but got 0."},
+		{name: "too many arguments", source: `fun one(a) {} one(1, 2);`, message: "Expected 1 arguments but got 2."},
+		{name: "top-level return", source: `return 1;`, message: "Can't return from top-level code."},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			statements, err := parseSource(test.source)
+			if err != nil {
+				t.Fatalf("parse %s: %v", test.name, err)
+			}
+			err = NewInterpreter(io.Discard).Interpret(statements)
+			if err == nil || !strings.Contains(err.Error(), test.message) {
+				t.Fatalf("error: got %v, want %q", err, test.message)
+			}
+		})
+	}
+}
+
 func TestInterpreterRuntimeErrors(t *testing.T) {
 	tests := []string{"-\"text\"", "1 + true", "true < false"}
 	for _, source := range tests {
