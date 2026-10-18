@@ -64,6 +64,11 @@ expression;` or `return;`. Calls evaluate arguments left to right, require an
 exact parameter count, and support at most 255 arguments. Returning from
 top-level code, calling a non-callable value, or passing the wrong number of
 arguments reports a runtime error.
+Before execution, GoLox resolves local variable references lexically. This
+means a function uses the scope where each name is defined, even when the
+function is called from a different nested scope. The resolver reports
+duplicate local declarations, reads of a local variable in its own initializer,
+and top-level `return` statements before any program statements execute.
 Conditional statements use `if (condition) statement` with an optional `else`
 branch. Only the selected branch executes, and an `else` binds to the nearest
 unmatched `if`.
@@ -311,8 +316,9 @@ expressions in calls and declarations, expression statements, print statements,
 or function declarations. The interpreter executes multiple statements in
 order, evaluates literals, operators, logical operators, global variables,
 assignments, lexical block scopes, conditionals, function calls, returns,
-recursion, and closures through a chained environment abstraction, and reports
-runtime errors with operator,
+recursion, and closures through a chained environment abstraction. A
+pre-interpretation resolver binds local variables to lexical distances and
+reports static scope errors; runtime errors still include operator,
 variable, and line context.
 Statement-level synchronization recovers at semicolons and known statement
 starters.
@@ -331,7 +337,9 @@ starters.
 - `environment_test.go` - Environment definition, nesting, assignment, nil, and lookup-error tests.
 - `interpreter.go` - Expression/statement evaluator, runtime errors, and value formatting.
 - `function.go` - Callable interface and user-defined function closures.
+- `resolver.go` - Static lexical scope resolver and binding diagnostics.
 - `interpreter_test.go` - Expression evaluation, runtime error, and pipeline tests.
+- `resolver_test.go` - Lexical binding, closure, and resolver diagnostic tests.
 - `stmt_test.go` - Statement parsing and execution tests.
 - `scanner_test.go` - Built-in Go tests for scanner behavior.
 - `test_src_code.lox` - Example Lox source file.

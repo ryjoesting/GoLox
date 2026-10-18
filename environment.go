@@ -38,6 +38,37 @@ func (environment *Environment) Get(name *Token) (any, error) {
 	return nil, undefinedVariableError(name)
 }
 
+func (environment *Environment) ancestor(distance int) *Environment {
+	current := environment
+	for index := 0; index < distance && current != nil; index++ {
+		current = current.enclosing
+	}
+	return current
+}
+
+func (environment *Environment) GetAt(distance int, name *Token) (any, error) {
+	target := environment.ancestor(distance)
+	if target == nil {
+		return nil, undefinedVariableError(name)
+	}
+	if value, ok := target.values[name.Lexeme]; ok {
+		return value, nil
+	}
+	return nil, undefinedVariableError(name)
+}
+
+func (environment *Environment) AssignAt(distance int, name *Token, value any) error {
+	target := environment.ancestor(distance)
+	if target == nil {
+		return undefinedVariableError(name)
+	}
+	if _, ok := target.values[name.Lexeme]; ok {
+		target.values[name.Lexeme] = value
+		return nil
+	}
+	return undefinedVariableError(name)
+}
+
 func undefinedVariableError(name *Token) error {
 	return RuntimeError{
 		Token:   name,

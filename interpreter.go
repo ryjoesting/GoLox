@@ -11,7 +11,10 @@ type Interpreter struct {
 	runtimeError  error
 	Output        io.Writer
 	environment   *Environment
+	globalEnv     *Environment
 	functionDepth int
+	locals        map[Expr]int
+	globals       map[Expr]struct{}
 }
 
 var interpreter = NewInterpreter(nil)
@@ -20,7 +23,11 @@ func NewInterpreter(output io.Writer) *Interpreter {
 	if output == nil {
 		output = os.Stdout
 	}
-	return &Interpreter{Output: output, environment: NewEnvironment()}
+	globalEnv := NewEnvironment()
+	return &Interpreter{
+		Output: output, environment: globalEnv, globalEnv: globalEnv,
+		locals: make(map[Expr]int), globals: make(map[Expr]struct{}),
+	}
 }
 
 type RuntimeError struct {
@@ -116,7 +123,15 @@ func (interpreter *Interpreter) VisitAssignExpr(expression *Assign) any {
 	if interpreter.runtimeError != nil {
 		return nil
 	}
-	if err := interpreter.environment.Assign(expression.Name, value); err != nil {
+	var err error
+	if distance, ok := interpreter.locals[expression]; ok {
+		err = interpreter.environment.AssignAt(distance, expression.Name, value)
+	} else if _, global := interpreter.globals[expression]; global {
+		err = interpreter.globalEnv.Assign(expression.Name, value)
+	} else {
+		err = interpreter.environment.Assign(expression.Name, value)
+	}
+	if err != nil {
 		interpreter.runtimeError = err
 		return nil
 	}
@@ -124,12 +139,30 @@ func (interpreter *Interpreter) VisitAssignExpr(expression *Assign) any {
 }
 
 func (interpreter *Interpreter) VisitVariableExpr(expression *Variable) any {
-	value, err := interpreter.environment.Get(expression.Name)
+	var (
+		value any
+		err   error
+	)
+	if distance, ok := interpreter.locals[expression]; ok {
+		value, err = interpreter.environment.GetAt(distance, expression.Name)
+	} else if _, global := interpreter.globals[expression]; global {
+		value, err = interpreter.globalEnv.Get(expression.Name)
+	} else {
+		value, err = interpreter.environment.Get(expression.Name)
+	}
 	if err != nil {
 		interpreter.runtimeError = err
 		return nil
 	}
 	return value
+}
+
+func (interpreter *Interpreter) Resolve(expression Expr, depth int) {
+	interpreter.locals[expression] = depth
+}
+
+func (interpreter *Interpreter) ResolveGlobal(expression Expr) {
+	interpreter.globals[expression] = struct{}{}
 }
 
 func (interpreter *Interpreter) VisitGroupingExpr(expression *Grouping) any {

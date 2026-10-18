@@ -405,6 +405,10 @@ func runSource(src string) error {
 		return err
 	}
 
+	resolver := NewResolver(interpreter)
+	if err := resolver.Resolve(statements); err != nil {
+		return err
+	}
 	return interpreter.Interpret(statements)
 }
 
