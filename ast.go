@@ -10,9 +10,12 @@ type ExprVisitor interface {
 	VisitBinaryExpr(expression *Binary) any
 	VisitCallExpr(expression *Call) any
 	VisitConditionalExpr(expression *Conditional) any
+	VisitGetExpr(expression *Get) any
 	VisitGroupingExpr(expression *Grouping) any
 	VisitLiteralExpr(expression *Literal) any
 	VisitLogicalExpr(expression *Logical) any
+	VisitSetExpr(expression *Set) any
+	VisitThisExpr(expression *This) any
 	VisitUnaryExpr(expression *Unary) any
 	VisitVariableExpr(expression *Variable) any
 }
@@ -38,6 +41,39 @@ type Call struct {
 	Callee    Expr
 	Paren     *Token
 	Arguments []Expr
+}
+
+type Get struct {
+	Object Expr
+	Name   *Token
+}
+
+func (*Get) isExpr() {}
+
+func (expression *Get) Accept(visitor ExprVisitor) any {
+	return visitor.VisitGetExpr(expression)
+}
+
+type Set struct {
+	Object Expr
+	Name   *Token
+	Value  Expr
+}
+
+func (*Set) isExpr() {}
+
+func (expression *Set) Accept(visitor ExprVisitor) any {
+	return visitor.VisitSetExpr(expression)
+}
+
+type This struct {
+	Keyword *Token
+}
+
+func (*This) isExpr() {}
+
+func (expression *This) Accept(visitor ExprVisitor) any {
+	return visitor.VisitThisExpr(expression)
 }
 
 func (*Call) isExpr() {}

@@ -57,6 +57,26 @@ func (resolver *Resolver) VisitBlockStmt(statement *BlockStmt) any {
 	return nil
 }
 
+func (resolver *Resolver) VisitClassStmt(statement *ClassStmt) any {
+	enclosingClass := resolver.currentClass
+	resolver.currentClass = resolverClass
+	resolver.declare(statement.Name)
+	resolver.define(statement.Name)
+
+	resolver.beginScope()
+	resolver.scopes[len(resolver.scopes)-1]["this"] = true
+	for _, method := range statement.Methods {
+		functionType := resolverFunction
+		if method.Name.Lexeme == "init" {
+			functionType = resolverInitializer
+		}
+		resolver.resolveFunction(method, functionType)
+	}
+	resolver.endScope()
+	resolver.currentClass = enclosingClass
+	return nil
+}
+
 func (resolver *Resolver) VisitExpressionStmt(statement *ExpressionStmt) any {
 	resolver.resolveExpr(statement.Expression)
 	return nil
@@ -126,6 +146,11 @@ func (resolver *Resolver) VisitCallExpr(expression *Call) any {
 	return nil
 }
 
+func (resolver *Resolver) VisitGetExpr(expression *Get) any {
+	resolver.resolveExpr(expression.Object)
+	return nil
+}
+
 func (resolver *Resolver) VisitConditionalExpr(expression *Conditional) any {
 	resolver.resolveExpr(expression.Condition)
 	resolver.resolveExpr(expression.Then)
@@ -145,6 +170,21 @@ func (resolver *Resolver) VisitLiteralExpr(expression *Literal) any {
 func (resolver *Resolver) VisitLogicalExpr(expression *Logical) any {
 	resolver.resolveExpr(expression.Left)
 	resolver.resolveExpr(expression.Right)
+	return nil
+}
+
+func (resolver *Resolver) VisitSetExpr(expression *Set) any {
+	resolver.resolveExpr(expression.Value)
+	resolver.resolveExpr(expression.Object)
+	return nil
+}
+
+func (resolver *Resolver) VisitThisExpr(expression *This) any {
+	if resolver.currentClass == resolverClassNone {
+		resolver.report(expression.Keyword, "Can't use 'this' outside of a class.")
+		return nil
+	}
+	resolver.resolveLocal(expression, expression.Keyword)
 	return nil
 }
 

@@ -50,6 +50,9 @@ func (parser *Parser) Parse() ([]Stmt, error) {
 }
 
 func (parser *Parser) declaration() (Stmt, error) {
+	if parser.match(CLASS) {
+		return parser.classDeclaration()
+	}
 	if parser.match(VAR) {
 		return parser.varDeclaration()
 	}
@@ -57,6 +60,29 @@ func (parser *Parser) declaration() (Stmt, error) {
 		return parser.functionDeclaration()
 	}
 	return parser.statement()
+}
+
+func (parser *Parser) classDeclaration() (Stmt, error) {
+	name, err := parser.consume(IDENTIFIER, "Expect class name.")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := parser.consume(LEFT_BRACE, "Expect '{' before class body."); err != nil {
+		return nil, err
+	}
+
+	methods := []*FunctionStmt{}
+	for !parser.check(RIGHT_BRACE) && !parser.isAtEnd() {
+		method, err := parser.functionDeclaration()
+		if err != nil {
+			return nil, err
+		}
+		methods = append(methods, method.(*FunctionStmt))
+	}
+	if _, err := parser.consume(RIGHT_BRACE, "Expect '}' after class body."); err != nil {
+		return nil, err
+	}
+	return &ClassStmt{Name: name, Methods: methods}, nil
 }
 
 func (parser *Parser) functionDeclaration() (Stmt, error) {
@@ -358,11 +384,14 @@ func (parser *Parser) assignment() (Expr, error) {
 		return nil, err
 	}
 
-	variable, ok := expression.(*Variable)
-	if !ok {
+	switch target := expression.(type) {
+	case *Variable:
+		return &Assign{Name: target.Name, Value: value}, nil
+	case *Get:
+		return &Set{Object: target.Object, Name: target.Name, Value: value}, nil
+	default:
 		return nil, parser.parseError(equals, "Invalid assignment target.")
 	}
-	return &Assign{Name: variable.Name, Value: value}, nil
 }
 
 func (parser *Parser) logicOr() (Expr, error) {
@@ -569,10 +598,20 @@ func (parser *Parser) call() (Expr, error) {
 		return nil, err
 	}
 
-	for parser.match(LEFT_PAREN) {
-		expression, err = parser.finishCall(expression)
-		if err != nil {
-			return nil, err
+	for {
+		if parser.match(LEFT_PAREN) {
+			expression, err = parser.finishCall(expression)
+			if err != nil {
+				return nil, err
+			}
+		} else if parser.match(DOT) {
+			name, err := parser.consume(IDENTIFIER, "Expect property name after '.'.")
+			if err != nil {
+				return nil, err
+			}
+			expression = &Get{Object: expression, Name: name}
+		} else {
+			break
 		}
 	}
 	return expression, nil
@@ -623,6 +662,9 @@ func (parser *Parser) primary() (Expr, error) {
 	}
 	if parser.match(STRING) {
 		return &Literal{Value: parser.previous().Literal}, nil
+	}
+	if parser.match(THIS) {
+		return &This{Keyword: parser.previous()}, nil
 	}
 	if parser.match(LEFT_PAREN) {
 		expression, err := parser.expression()

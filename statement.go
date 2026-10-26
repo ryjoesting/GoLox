@@ -9,6 +9,7 @@ type Stmt interface {
 
 type StmtVisitor interface {
 	VisitBlockStmt(statement *BlockStmt) any
+	VisitClassStmt(statement *ClassStmt) any
 	VisitExpressionStmt(statement *ExpressionStmt) any
 	VisitFunctionStmt(statement *FunctionStmt) any
 	VisitIfStmt(statement *IfStmt) any
@@ -20,6 +21,17 @@ type StmtVisitor interface {
 
 type BlockStmt struct {
 	Statements []Stmt
+}
+
+type ClassStmt struct {
+	Name    *Token
+	Methods []*FunctionStmt
+}
+
+func (*ClassStmt) isStmt() {}
+
+func (statement *ClassStmt) Accept(visitor StmtVisitor) any {
+	return visitor.VisitClassStmt(statement)
 }
 
 func (*BlockStmt) isStmt() {}

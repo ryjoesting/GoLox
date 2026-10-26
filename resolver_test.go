@@ -65,6 +65,28 @@ func TestResolverRejectsTopLevelReturn(t *testing.T) {
 	}
 }
 
+func TestResolverRejectsThisOutsideClass(t *testing.T) {
+	statements, err := parseSource("print this;")
+	if err != nil {
+		t.Fatalf("parse source: %v", err)
+	}
+	err = NewResolver(NewInterpreter(nil)).Resolve(statements)
+	if err == nil || !strings.Contains(err.Error(), "Can't use 'this' outside of a class.") {
+		t.Fatalf("resolver error: got %v", err)
+	}
+}
+
+func TestResolverRejectsValueReturnFromInitializer(t *testing.T) {
+	statements, err := parseSource("class A { init() { return 1; } }")
+	if err != nil {
+		t.Fatalf("parse source: %v", err)
+	}
+	err = NewResolver(NewInterpreter(nil)).Resolve(statements)
+	if err == nil || !strings.Contains(err.Error(), "Can't return a value from an initializer.") {
+		t.Fatalf("resolver error: got %v", err)
+	}
+}
+
 func TestRunSourceDoesNotExecuteAfterResolverError(t *testing.T) {
 	var output bytes.Buffer
 	previous := interpreter

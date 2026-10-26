@@ -17,6 +17,23 @@ type Interpreter struct {
 	globals       map[Expr]struct{}
 }
 
+func (interpreter *Interpreter) VisitClassStmt(statement *ClassStmt) any {
+	interpreter.environment.Define(statement.Name.Lexeme, nil)
+	methods := make(map[string]*LoxFunction)
+	for _, method := range statement.Methods {
+		function := NewLoxFunction(method, interpreter.environment)
+		if method.Name.Lexeme == "init" {
+			function = NewInitializer(method, interpreter.environment)
+		}
+		methods[method.Name.Lexeme] = function
+	}
+	klass := NewLoxClass(statement.Name.Lexeme, methods)
+	if err := interpreter.environment.Assign(statement.Name, klass); err != nil {
+		interpreter.runtimeError = err
+	}
+	return nil
+}
+
 var interpreter = NewInterpreter(nil)
 
 func NewInterpreter(output io.Writer) *Interpreter {
@@ -30,9 +47,47 @@ func NewInterpreter(output io.Writer) *Interpreter {
 	}
 }
 
+func (interpreter *Interpreter) VisitGetExpr(expression *Get) any {
+	object := interpreter.evaluate(expression.Object)
+	if interpreter.runtimeError != nil {
+		return nil
+	}
+	instance, ok := object.(*LoxInstance)
+	if !ok {
+		return interpreter.fail(expression.Name, "Only instances have properties.")
+	}
+	value, err := instance.Get(expression.Name)
+	if err != nil {
+		interpreter.runtimeError = err
+		return nil
+	}
+	return value
+}
+
 type RuntimeError struct {
 	Token   *Token
 	Message string
+}
+
+func (interpreter *Interpreter) VisitSetExpr(expression *Set) any {
+	object := interpreter.evaluate(expression.Object)
+	if interpreter.runtimeError != nil {
+		return nil
+	}
+	instance, ok := object.(*LoxInstance)
+	if !ok {
+		return interpreter.fail(expression.Name, "Only instances have fields.")
+	}
+	value := interpreter.evaluate(expression.Value)
+	if interpreter.runtimeError != nil {
+		return nil
+	}
+	instance.Set(expression.Name, value)
+	return value
+}
+
+func (interpreter *Interpreter) VisitThisExpr(expression *This) any {
+	return interpreter.lookupVariable(expression.Keyword, expression)
 }
 
 func (error RuntimeError) Error() string {
@@ -139,16 +194,18 @@ func (interpreter *Interpreter) VisitAssignExpr(expression *Assign) any {
 }
 
 func (interpreter *Interpreter) VisitVariableExpr(expression *Variable) any {
-	var (
-		value any
-		err   error
-	)
+	return interpreter.lookupVariable(expression.Name, expression)
+}
+
+func (interpreter *Interpreter) lookupVariable(name *Token, expression Expr) any {
+	var value any
+	var err error
 	if distance, ok := interpreter.locals[expression]; ok {
-		value, err = interpreter.environment.GetAt(distance, expression.Name)
+		value, err = interpreter.environment.GetAt(distance, name)
 	} else if _, global := interpreter.globals[expression]; global {
-		value, err = interpreter.globalEnv.Get(expression.Name)
+		value, err = interpreter.globalEnv.Get(name)
 	} else {
-		value, err = interpreter.environment.Get(expression.Name)
+		value, err = interpreter.environment.Get(name)
 	}
 	if err != nil {
 		interpreter.runtimeError = err

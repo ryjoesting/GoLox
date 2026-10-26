@@ -8,10 +8,15 @@ type LoxCallable interface {
 type LoxFunction struct {
 	declaration *FunctionStmt
 	closure     *Environment
+	initializer bool
 }
 
 func NewLoxFunction(declaration *FunctionStmt, closure *Environment) *LoxFunction {
 	return &LoxFunction{declaration: declaration, closure: closure}
+}
+
+func NewInitializer(declaration *FunctionStmt, closure *Environment) *LoxFunction {
+	return &LoxFunction{declaration: declaration, closure: closure, initializer: true}
 }
 
 func (function *LoxFunction) Arity() int {
@@ -48,7 +53,25 @@ func (function *LoxFunction) Call(interpreter *Interpreter, arguments []any) any
 		}()
 		interpreter.executeBlock(function.declaration.Body, environment)
 	}()
+	if function.initializer {
+		value, err := function.closure.GetAt(0, &Token{Lexeme: "this"})
+		if err != nil {
+			interpreter.runtimeError = err
+			return nil
+		}
+		return value
+	}
 	return result
+}
+
+func (function *LoxFunction) Bind(instance *LoxInstance) *LoxFunction {
+	environment := NewEnvironment(function.closure)
+	environment.Define("this", instance)
+	return &LoxFunction{
+		declaration: function.declaration,
+		closure:     environment,
+		initializer: function.initializer,
+	}
 }
 
 type returnSignal struct {

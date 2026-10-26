@@ -156,6 +156,87 @@ func TestInterpreterSupportsClosuresAndRecursion(t *testing.T) {
 	}
 }
 
+func TestInterpreterSupportsClassesFieldsMethodsAndInitializers(t *testing.T) {
+	var output strings.Builder
+	statements, err := parseSource(`
+		class Counter {
+			init(start) { this.value = start; }
+			increment() { this.value = this.value + 1; }
+			current() { return this.value; }
+		}
+		var counter = Counter(4);
+		counter.increment();
+		print counter.current();
+		print counter;
+	`)
+	if err != nil {
+		t.Fatalf("parse classes: %v", err)
+	}
+	statementInterpreter := NewInterpreter(&output)
+	if err := NewResolver(statementInterpreter).Resolve(statements); err != nil {
+		t.Fatalf("resolve classes: %v", err)
+	}
+	if err := statementInterpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret classes: %v", err)
+	}
+	if got, want := output.String(), "5\nCounter instance\n"; got != want {
+		t.Fatalf("class output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterBindsMethodsWhenExtracted(t *testing.T) {
+	var output strings.Builder
+	statements, err := parseSource(`
+		class Person { sayName() { print this.name; } }
+		var jane = Person();
+		jane.name = "Jane";
+		var method = jane.sayName;
+		method();
+	`)
+	if err != nil {
+		t.Fatalf("parse bound method: %v", err)
+	}
+	statementInterpreter := NewInterpreter(&output)
+	if err := NewResolver(statementInterpreter).Resolve(statements); err != nil {
+		t.Fatalf("resolve bound method: %v", err)
+	}
+	if err := statementInterpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret bound method: %v", err)
+	}
+	if got, want := output.String(), "Jane\n"; got != want {
+		t.Fatalf("bound method output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterClassErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		source  string
+		message string
+	}{
+		{name: "non-instance get", source: `1.foo;`, message: "Only instances have properties."},
+		{name: "non-instance set", source: `1.foo = 2;`, message: "Only instances have fields."},
+		{name: "missing property", source: `class A {} print A().missing;`, message: "Undefined property 'missing'."},
+		{name: "initializer arity", source: `class A { init(value) {} } A();`, message: "Expected 1 arguments but got 0."},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			statements, err := parseSource(test.source)
+			if err != nil {
+				t.Fatalf("parse %s: %v", test.name, err)
+			}
+			interpreter := NewInterpreter(io.Discard)
+			if err := NewResolver(interpreter).Resolve(statements); err != nil {
+				t.Fatalf("resolve %s: %v", test.name, err)
+			}
+			err = interpreter.Interpret(statements)
+			if err == nil || !strings.Contains(err.Error(), test.message) {
+				t.Fatalf("error: got %v, want %q", err, test.message)
+			}
+		})
+	}
+}
+
 func TestInterpreterFunctionErrors(t *testing.T) {
 	tests := []struct {
 		name    string

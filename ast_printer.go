@@ -28,6 +28,10 @@ func (printer AstPrinter) VisitCallExpr(expression *Call) any {
 	return printer.parenthesize("call", expressions...)
 }
 
+func (printer AstPrinter) VisitGetExpr(expression *Get) any {
+	return printer.parenthesize("."+expression.Name.Lexeme, expression.Object)
+}
+
 func (printer AstPrinter) VisitConditionalExpr(expression *Conditional) any {
 	return printer.parenthesize("?:", expression.Condition, expression.Then, expression.Else)
 }
@@ -41,6 +45,14 @@ func (AstPrinter) VisitLiteralExpr(expression *Literal) any {
 		return "nil"
 	}
 	return fmt.Sprint(expression.Value)
+}
+
+func (printer AstPrinter) VisitSetExpr(expression *Set) any {
+	return printer.parenthesize("=", &Get{Object: expression.Object, Name: expression.Name}, expression.Value)
+}
+
+func (AstPrinter) VisitThisExpr(expression *This) any {
+	return expression.Keyword.Lexeme
 }
 
 func (printer AstPrinter) VisitLogicalExpr(expression *Logical) any {

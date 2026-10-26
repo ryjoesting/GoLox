@@ -65,6 +65,7 @@ func TestParserPrimaryExpressions(t *testing.T) {
 func TestParserCallExpressions(t *testing.T) {
 	assertParsedExpression(t, "getCallback()()", "(call (call getCallback))")
 	assertParsedExpression(t, "add(1, 2 * 3)", "(call add 1 (* 2 3))")
+	assertParsedExpression(t, "object.method(1).field", "(.field (call (.method object) 1))")
 }
 
 func TestParserBuildsFunctionDeclarations(t *testing.T) {
@@ -81,6 +82,21 @@ func TestParserBuildsFunctionDeclarations(t *testing.T) {
 	}
 	if _, ok := function.Body[0].(*ReturnStmt); !ok {
 		t.Fatalf("function body statement: got %T, want *ReturnStmt", function.Body[0])
+	}
+}
+
+func TestParserBuildsClassDeclarations(t *testing.T) {
+	statements, err := parseSource("class Breakfast { cook() { print \"Eggs\"; } }")
+	if err != nil {
+		t.Fatalf("parse class: %v", err)
+	}
+	class, ok := statements[0].(*ClassStmt)
+	if !ok {
+		t.Fatalf("statement type: got %T, want *ClassStmt", statements[0])
+	}
+	if class.Name.Lexeme != "Breakfast" || len(class.Methods) != 1 ||
+		class.Methods[0].Name.Lexeme != "cook" {
+		t.Fatalf("unexpected class declaration: %#v", class)
 	}
 }
 
