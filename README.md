@@ -64,6 +64,33 @@ expression;` or `return;`. Calls evaluate arguments left to right, require an
 exact parameter count, and support at most 255 arguments. Returning from
 top-level code, calling a non-callable value, or passing the wrong number of
 arguments reports a runtime error.
+Classes are declared with `class Name { ... }`. Methods omit the `fun` keyword
+and can read or update instance state through `this`. Classes are callable and
+create instances; instances support dynamically-added fields and property
+access:
+
+```lox
+class Counter {
+  init(start) {
+    this.value = start;
+  }
+
+  increment() {
+    this.value = this.value + 1;
+  }
+}
+
+var counter = Counter(0);
+counter.increment();
+print counter.value;  // 1
+```
+
+An `init` method is an optional initializer. Its parameter count determines
+the number of arguments accepted by the class call, and it always returns the
+new instance. Fields take precedence over methods when a property is read.
+Extracted methods remain bound to the instance from which they were obtained.
+`this` is only valid inside a class method; inheritance and `super` are not
+implemented yet.
 Before execution, GoLox resolves local variable references lexically. This
 means a function uses the scope where each name is defined, even when the
 function is called from a different nested scope. The resolver reports
@@ -233,6 +260,40 @@ print counter();  // 1
 print counter();  // 2
 ```
 
+### Classes
+
+Classes bundle instance data with methods. A class body contains methods whose
+names, parameters, and bodies follow the same rules as functions, but methods
+are declared without `fun`. Use `.` to read a property or call a method, and
+assigning to a property creates or updates an instance field:
+
+```lox
+class Person {
+  init(name) {
+    this.name = name;
+  }
+
+  sayName() {
+    print this.name;
+  }
+}
+
+var jane = Person("Jane");
+jane.sayName();       // Jane
+jane.species = "Lox";
+print jane.species;   // Lox
+```
+
+Property access is dynamic. If a field does not exist, GoLox searches the
+class's methods. Reading or assigning properties on non-instance values is a
+runtime error, as is reading a missing property. A method can be stored in a
+variable and called later; it retains its original `this` instance:
+
+```lox
+var callback = jane.sayName;
+callback();           // Jane
+```
+
 ### A complete small program
 
 The following example combines variables, a function, a loop, and output:
@@ -256,7 +317,7 @@ print sumTo(5);  // 15
 Run all tests for this GoLox module from the project directory:
 
 ```text
-go test
+go test ./...
 ```
 
 A successful test run ends with output similar to:
@@ -276,6 +337,12 @@ To run only scanner tests:
 
 ```text
 go test -run TestScanner -v
+```
+
+To run class-related parser, resolver, and interpreter tests:
+
+```text
+go test -run 'Class|Classes|This|Initializer|Method' -v
 ```
 
 The expression AST tests can be run with:
@@ -304,11 +371,14 @@ go test -run TestInterpreter -v
 
 ## Current Implementation
 
-The project currently includes the scanner and the expression AST from the Lox
-grammar. The AST uses a sealed `Expr` interface with `Binary`, `Call`,
-`Grouping`, `Literal`, and `Unary` expression nodes. An `ExprVisitor` interface provides
-double-dispatch for operations such as printing, and `AstPrinter` renders
-expressions as parenthesized tree structures such as `(* (- 123) (group 45.67))`.
+The project includes a scanner, expression and statement ASTs, a recursive
+descent parser, a resolver, and a tree-walk interpreter. The AST uses sealed
+`Expr` and `Stmt` interfaces with expression nodes for binary operations,
+calls, conditionals, assignments, property access, property assignment,
+`this`, grouping, literals, logical operators, unary operators, and variables.
+Statement nodes include blocks, classes, expressions, functions, conditionals,
+prints, returns, variables, and loops. An `AstPrinter` renders expressions as
+parenthesized tree structures such as `(* (- 123) (group 45.67))`.
 
 The parser uses recursive descent with precedence levels for comma, conditional,
 equality, comparison, term, factor, unary, and primary expressions, then wraps
@@ -328,7 +398,7 @@ starters.
 - `golox.go` - Program entry point and command-line handling.
 - `scanner.go` - Token definitions, lexical scanner, parser pipeline, REPL, and file execution.
 - `ast.go` - Expression AST nodes and the `ExprVisitor` interface.
-- `stmt.go` - Statement AST nodes and the `StmtVisitor` interface.
+- `statement.go` - Statement AST nodes and the `StmtVisitor` interface.
 - `ast_printer.go` - Visitor-based AST printer for inspecting tree structure.
 - `ast_test.go` - AST structure and printer tests.
 - `parser.go` - Recursive-descent program/statement parser and structured parse errors.
@@ -337,6 +407,7 @@ starters.
 - `environment_test.go` - Environment definition, nesting, assignment, nil, and lookup-error tests.
 - `interpreter.go` - Expression/statement evaluator, runtime errors, and value formatting.
 - `function.go` - Callable interface and user-defined function closures.
+- `class.go` - Runtime classes, instances, fields, methods, and bound methods.
 - `resolver.go` - Static lexical scope resolver and binding diagnostics.
 - `interpreter_test.go` - Expression evaluation, runtime error, and pipeline tests.
 - `resolver_test.go` - Lexical binding, closure, and resolver diagnostic tests.
