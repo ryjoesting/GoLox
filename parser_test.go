@@ -60,6 +60,7 @@ func TestParserPrimaryExpressions(t *testing.T) {
 	assertParsedExpression(t, "nil", "nil")
 	assertParsedExpression(t, `"hello"`, "hello")
 	assertParsedExpression(t, "(1 + 2)", "(group (+ 1 2))")
+	assertParsedExpression(t, "super.cook", "super.cook")
 }
 
 func TestParserCallExpressions(t *testing.T) {
@@ -97,6 +98,21 @@ func TestParserBuildsClassDeclarations(t *testing.T) {
 	if class.Name.Lexeme != "Breakfast" || len(class.Methods) != 1 ||
 		class.Methods[0].Name.Lexeme != "cook" {
 		t.Fatalf("unexpected class declaration: %#v", class)
+	}
+}
+
+func TestParserBuildsClassSuperclass(t *testing.T) {
+	statements, err := parseSource("class BostonCream < Doughnut {}")
+	if err != nil {
+		t.Fatalf("parse subclass: %v", err)
+	}
+	class, ok := statements[0].(*ClassStmt)
+	if !ok {
+		t.Fatalf("statement type: got %T, want *ClassStmt", statements[0])
+	}
+	superclass, ok := class.Superclass.(*Variable)
+	if !ok || superclass.Name.Lexeme != "Doughnut" {
+		t.Fatalf("superclass: got %#v, want Doughnut variable", class.Superclass)
 	}
 }
 

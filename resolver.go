@@ -60,9 +60,21 @@ func (resolver *Resolver) VisitBlockStmt(statement *BlockStmt) any {
 func (resolver *Resolver) VisitClassStmt(statement *ClassStmt) any {
 	enclosingClass := resolver.currentClass
 	resolver.currentClass = resolverClass
+	if statement.Superclass != nil {
+		if superclass, ok := statement.Superclass.(*Variable); ok &&
+			superclass.Name.Lexeme == statement.Name.Lexeme {
+			resolver.report(superclass.Name, "A class can't inherit from itself.")
+		}
+		resolver.currentClass = resolverSubclass
+		resolver.resolveExpr(statement.Superclass)
+	}
 	resolver.declare(statement.Name)
 	resolver.define(statement.Name)
 
+	if statement.Superclass != nil {
+		resolver.beginScope()
+		resolver.scopes[len(resolver.scopes)-1]["super"] = true
+	}
 	resolver.beginScope()
 	resolver.scopes[len(resolver.scopes)-1]["this"] = true
 	for _, method := range statement.Methods {
@@ -73,6 +85,9 @@ func (resolver *Resolver) VisitClassStmt(statement *ClassStmt) any {
 		resolver.resolveFunction(method, functionType)
 	}
 	resolver.endScope()
+	if statement.Superclass != nil {
+		resolver.endScope()
+	}
 	resolver.currentClass = enclosingClass
 	return nil
 }
@@ -176,6 +191,16 @@ func (resolver *Resolver) VisitLogicalExpr(expression *Logical) any {
 func (resolver *Resolver) VisitSetExpr(expression *Set) any {
 	resolver.resolveExpr(expression.Value)
 	resolver.resolveExpr(expression.Object)
+	return nil
+}
+
+func (resolver *Resolver) VisitSuperExpr(expression *Super) any {
+	if resolver.currentClass == resolverClassNone {
+		resolver.report(expression.Keyword, "Can't use 'super' outside of a class.")
+	} else if resolver.currentClass != resolverSubclass {
+		resolver.report(expression.Keyword, "Can't use 'super' in a class with no superclass.")
+	}
+	resolver.resolveLocal(expression, expression.Keyword)
 	return nil
 }
 

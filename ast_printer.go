@@ -55,6 +55,10 @@ func (AstPrinter) VisitThisExpr(expression *This) any {
 	return expression.Keyword.Lexeme
 }
 
+func (AstPrinter) VisitSuperExpr(expression *Super) any {
+	return "super." + expression.Method.Lexeme
+}
+
 func (printer AstPrinter) VisitLogicalExpr(expression *Logical) any {
 	return printer.parenthesize(expression.Operator.Lexeme, expression.Left, expression.Right)
 }

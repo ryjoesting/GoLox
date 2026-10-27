@@ -1,12 +1,13 @@
 package main
 
 type LoxClass struct {
-	name    string
-	methods map[string]*LoxFunction
+	name       string
+	superclass *LoxClass
+	methods    map[string]*LoxFunction
 }
 
-func NewLoxClass(name string, methods map[string]*LoxFunction) *LoxClass {
-	return &LoxClass{name: name, methods: methods}
+func NewLoxClass(name string, superclass *LoxClass, methods map[string]*LoxFunction) *LoxClass {
+	return &LoxClass{name: name, superclass: superclass, methods: methods}
 }
 
 func (klass *LoxClass) Arity() int {
@@ -26,7 +27,13 @@ func (klass *LoxClass) Call(interpreter *Interpreter, arguments []any) any {
 }
 
 func (klass *LoxClass) FindMethod(name string) *LoxFunction {
-	return klass.methods[name]
+	if method, ok := klass.methods[name]; ok {
+		return method
+	}
+	if klass.superclass != nil {
+		return klass.superclass.FindMethod(name)
+	}
+	return nil
 }
 
 func (klass *LoxClass) String() string {

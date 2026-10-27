@@ -67,6 +67,14 @@ func (parser *Parser) classDeclaration() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
+	var superclass Expr
+	if parser.match(LESS) {
+		superclassName, err := parser.consume(IDENTIFIER, "Expect superclass name.")
+		if err != nil {
+			return nil, err
+		}
+		superclass = &Variable{Name: superclassName}
+	}
 	if _, err := parser.consume(LEFT_BRACE, "Expect '{' before class body."); err != nil {
 		return nil, err
 	}
@@ -82,7 +90,7 @@ func (parser *Parser) classDeclaration() (Stmt, error) {
 	if _, err := parser.consume(RIGHT_BRACE, "Expect '}' after class body."); err != nil {
 		return nil, err
 	}
-	return &ClassStmt{Name: name, Methods: methods}, nil
+	return &ClassStmt{Name: name, Superclass: superclass, Methods: methods}, nil
 }
 
 func (parser *Parser) functionDeclaration() (Stmt, error) {
@@ -662,6 +670,17 @@ func (parser *Parser) primary() (Expr, error) {
 	}
 	if parser.match(STRING) {
 		return &Literal{Value: parser.previous().Literal}, nil
+	}
+	if parser.match(SUPER) {
+		keyword := parser.previous()
+		if _, err := parser.consume(DOT, "Expect '.' after 'super'."); err != nil {
+			return nil, err
+		}
+		method, err := parser.consume(IDENTIFIER, "Expect superclass method name.")
+		if err != nil {
+			return nil, err
+		}
+		return &Super{Keyword: keyword, Method: method}, nil
 	}
 	if parser.match(THIS) {
 		return &This{Keyword: parser.previous()}, nil

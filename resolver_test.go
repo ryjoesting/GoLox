@@ -87,6 +87,30 @@ func TestResolverRejectsValueReturnFromInitializer(t *testing.T) {
 	}
 }
 
+func TestResolverRejectsInvalidSuperUses(t *testing.T) {
+	tests := []struct {
+		name    string
+		source  string
+		message string
+	}{
+		{name: "outside class", source: "super.method();", message: "Can't use 'super' outside of a class."},
+		{name: "class without superclass", source: "class A { method() { super.method(); } }", message: "Can't use 'super' in a class with no superclass."},
+		{name: "self inheritance", source: "class A < A {}", message: "A class can't inherit from itself."},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			statements, err := parseSource(test.source)
+			if err != nil {
+				t.Fatalf("parse %s: %v", test.name, err)
+			}
+			err = NewResolver(NewInterpreter(nil)).Resolve(statements)
+			if err == nil || !strings.Contains(err.Error(), test.message) {
+				t.Fatalf("resolver error: got %v, want %q", err, test.message)
+			}
+		})
+	}
+}
+
 func TestRunSourceDoesNotExecuteAfterResolverError(t *testing.T) {
 	var output bytes.Buffer
 	previous := interpreter

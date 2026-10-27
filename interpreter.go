@@ -19,6 +19,28 @@ type Interpreter struct {
 
 func (interpreter *Interpreter) VisitClassStmt(statement *ClassStmt) any {
 	interpreter.environment.Define(statement.Name.Lexeme, nil)
+	var superclass *LoxClass
+	if statement.Superclass != nil {
+		value := interpreter.evaluate(statement.Superclass)
+		if interpreter.runtimeError != nil {
+			return nil
+		}
+		var ok bool
+		superclass, ok = value.(*LoxClass)
+		if !ok {
+			token := statement.Name
+			if variable, isVariable := statement.Superclass.(*Variable); isVariable {
+				token = variable.Name
+			}
+			interpreter.runtimeError = RuntimeError{
+				Token:   token,
+				Message: "Superclass must be a class.",
+			}
+			return nil
+		}
+		interpreter.environment = NewEnvironment(interpreter.environment)
+		interpreter.environment.Define("super", superclass)
+	}
 	methods := make(map[string]*LoxFunction)
 	for _, method := range statement.Methods {
 		function := NewLoxFunction(method, interpreter.environment)
@@ -27,7 +49,10 @@ func (interpreter *Interpreter) VisitClassStmt(statement *ClassStmt) any {
 		}
 		methods[method.Name.Lexeme] = function
 	}
-	klass := NewLoxClass(statement.Name.Lexeme, methods)
+	klass := NewLoxClass(statement.Name.Lexeme, superclass, methods)
+	if statement.Superclass != nil {
+		interpreter.environment = interpreter.environment.enclosing
+	}
 	if err := interpreter.environment.Assign(statement.Name, klass); err != nil {
 		interpreter.runtimeError = err
 	}
@@ -88,6 +113,36 @@ func (interpreter *Interpreter) VisitSetExpr(expression *Set) any {
 
 func (interpreter *Interpreter) VisitThisExpr(expression *This) any {
 	return interpreter.lookupVariable(expression.Keyword, expression)
+}
+
+func (interpreter *Interpreter) VisitSuperExpr(expression *Super) any {
+	distance, ok := interpreter.locals[expression]
+	if !ok {
+		return interpreter.fail(expression.Keyword, "Unable to resolve superclass.")
+	}
+	superclassValue, err := interpreter.environment.GetAt(distance, expression.Keyword)
+	if err != nil {
+		interpreter.runtimeError = err
+		return nil
+	}
+	superclass, ok := superclassValue.(*LoxClass)
+	if !ok {
+		return interpreter.fail(expression.Keyword, "Superclass must be a class.")
+	}
+	instanceValue, err := interpreter.environment.GetAt(distance-1, &Token{Lexeme: "this", Line: expression.Keyword.Line})
+	if err != nil {
+		interpreter.runtimeError = err
+		return nil
+	}
+	instance, ok := instanceValue.(*LoxInstance)
+	if !ok {
+		return interpreter.fail(expression.Keyword, "Invalid 'this' binding.")
+	}
+	method := superclass.FindMethod(expression.Method.Lexeme)
+	if method == nil {
+		return interpreter.fail(expression.Method, "Undefined property '"+expression.Method.Lexeme+"'.")
+	}
+	return method.Bind(instance)
 }
 
 func (error RuntimeError) Error() string {

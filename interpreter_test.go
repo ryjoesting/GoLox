@@ -248,6 +248,86 @@ func TestInterpreterFieldsOverrideMethods(t *testing.T) {
 	}
 }
 
+func TestInterpreterSupportsInheritanceAndSuper(t *testing.T) {
+	var output strings.Builder
+	statements, err := parseSource(`
+		class A {
+			method() { print "A"; }
+			value() { return "A value"; }
+		}
+		class B < A {
+			method() {
+				super.method();
+				print "B";
+			}
+			value() { return super.value() + " plus B"; }
+		}
+		class C < B {}
+		C().method();
+		print C().value();
+	`)
+	if err != nil {
+		t.Fatalf("parse inheritance: %v", err)
+	}
+	interpreter := NewInterpreter(&output)
+	if err := NewResolver(interpreter).Resolve(statements); err != nil {
+		t.Fatalf("resolve inheritance: %v", err)
+	}
+	if err := interpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret inheritance: %v", err)
+	}
+	if got, want := output.String(), "A\nB\nA value plus B\n"; got != want {
+		t.Fatalf("inheritance output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterBindsExtractedSuperMethod(t *testing.T) {
+	var output strings.Builder
+	statements, err := parseSource(`
+		class A { method() { print this.name; } }
+		class B < A { getMethod() { return super.method; } }
+		var b = B();
+		b.name = "B instance";
+		var method = b.getMethod();
+		method();
+	`)
+	if err != nil {
+		t.Fatalf("parse extracted super method: %v", err)
+	}
+	interpreter := NewInterpreter(&output)
+	if err := NewResolver(interpreter).Resolve(statements); err != nil {
+		t.Fatalf("resolve extracted super method: %v", err)
+	}
+	if err := interpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret extracted super method: %v", err)
+	}
+	if got, want := output.String(), "B instance\n"; got != want {
+		t.Fatalf("extracted super method output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterInheritsInitializer(t *testing.T) {
+	var output strings.Builder
+	statements, err := parseSource(`
+		class A { init(value) { this.value = value; } }
+		class B < A {}
+		print B("inherited").value;
+	`)
+	if err != nil {
+		t.Fatalf("parse inherited initializer: %v", err)
+	}
+	interpreter := NewInterpreter(&output)
+	if err := NewResolver(interpreter).Resolve(statements); err != nil {
+		t.Fatalf("resolve inherited initializer: %v", err)
+	}
+	if err := interpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret inherited initializer: %v", err)
+	}
+	if got, want := output.String(), "inherited\n"; got != want {
+		t.Fatalf("inherited initializer output: got %q, want %q", got, want)
+	}
+}
+
 func TestInterpreterClassErrors(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -258,6 +338,8 @@ func TestInterpreterClassErrors(t *testing.T) {
 		{name: "non-instance set", source: `1.foo = 2;`, message: "Only instances have fields."},
 		{name: "missing property", source: `class A {} print A().missing;`, message: "Undefined property 'missing'."},
 		{name: "initializer arity", source: `class A { init(value) {} } A();`, message: "Expected 1 arguments but got 0."},
+		{name: "non-class superclass", source: `var value = "not a class"; class A < value {}`, message: "Superclass must be a class."},
+		{name: "missing superclass method", source: `class A {} class B < A { method() { super.missing(); } } B().method();`, message: "Undefined property 'missing'."},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -13,13 +13,14 @@ func TestExpressionNodesImplementExpr(t *testing.T) {
 		&Literal{},
 		&Logical{},
 		&Set{},
+		&Super{},
 		&This{},
 		&Unary{},
 		&Variable{},
 	}
 
-	if len(expressions) != 12 {
-		t.Fatalf("got %d expression nodes, want 12", len(expressions))
+	if len(expressions) != 13 {
+		t.Fatalf("got %d expression nodes, want 13", len(expressions))
 	}
 }
 

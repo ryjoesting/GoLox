@@ -24,8 +24,9 @@ type BlockStmt struct {
 }
 
 type ClassStmt struct {
-	Name    *Token
-	Methods []*FunctionStmt
+	Name       *Token
+	Superclass Expr
+	Methods    []*FunctionStmt
 }
 
 func (*ClassStmt) isStmt() {}

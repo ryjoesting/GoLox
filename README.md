@@ -65,9 +65,10 @@ exact parameter count, and support at most 255 arguments. Returning from
 top-level code, calling a non-callable value, or passing the wrong number of
 arguments reports a runtime error.
 Classes are declared with `class Name { ... }`. Methods omit the `fun` keyword
-and can read or update instance state through `this`. Classes are callable and
-create instances; instances support dynamically-added fields and property
-access:
+and can read or update instance state through `this`. A class may inherit from
+another class with `<`; inherited methods can be overridden and called
+explicitly with `super.method()`. Classes are callable and create instances;
+instances support dynamically-added fields and property access:
 
 ```lox
 class Counter {
@@ -89,8 +90,8 @@ An `init` method is an optional initializer. Its parameter count determines
 the number of arguments accepted by the class call, and it always returns the
 new instance. Fields take precedence over methods when a property is read.
 Extracted methods remain bound to the instance from which they were obtained.
-`this` is only valid inside a class method; inheritance and `super` are not
-implemented yet.
+`this` is only valid inside a class method. `super` is only valid inside a
+subclass method, and its superclass must evaluate to a class at runtime.
 Before execution, GoLox resolves local variable references lexically. This
 means a function uses the scope where each name is defined, even when the
 function is called from a different nested scope. The resolver reports
@@ -282,6 +283,25 @@ var jane = Person("Jane");
 jane.sayName();       // Jane
 jane.species = "Lox";
 print jane.species;   // Lox
+```
+
+Inheritance and `super` dispatch:
+
+```lox
+class Doughnut {
+  cook() {
+    print "Fry until golden brown.";
+  }
+}
+
+class BostonCream < Doughnut {
+  cook() {
+    super.cook();
+    print "Pipe full of custard and coat with chocolate.";
+  }
+}
+
+BostonCream().cook();
 ```
 
 Property access is dynamic. If a field does not exist, GoLox searches the
