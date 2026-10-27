@@ -110,6 +110,23 @@ func TestInterpreterExecutesFunctionsAndReturns(t *testing.T) {
 	}
 }
 
+func TestInterpreterReturnsNilFromBareReturn(t *testing.T) {
+	var output strings.Builder
+	statements, err := parseSource(`
+		fun stop() { return; }
+		print stop();
+	`)
+	if err != nil {
+		t.Fatalf("parse bare return: %v", err)
+	}
+	if err := NewInterpreter(&output).Interpret(statements); err != nil {
+		t.Fatalf("interpret bare return: %v", err)
+	}
+	if got, want := output.String(), "nil\n"; got != want {
+		t.Fatalf("bare return output: got %q, want %q", got, want)
+	}
+}
+
 func TestInterpreterStringifiesFunctions(t *testing.T) {
 	var output strings.Builder
 	statements, err := parseSource("fun greet() {} print greet;")
@@ -205,6 +222,29 @@ func TestInterpreterBindsMethodsWhenExtracted(t *testing.T) {
 	}
 	if got, want := output.String(), "Jane\n"; got != want {
 		t.Fatalf("bound method output: got %q, want %q", got, want)
+	}
+}
+
+func TestInterpreterFieldsOverrideMethods(t *testing.T) {
+	var output strings.Builder
+	statements, err := parseSource(`
+		class Example { value() { return "method"; } }
+		var example = Example();
+		example.value = "field";
+		print example.value;
+	`)
+	if err != nil {
+		t.Fatalf("parse field override: %v", err)
+	}
+	interpreter := NewInterpreter(&output)
+	if err := NewResolver(interpreter).Resolve(statements); err != nil {
+		t.Fatalf("resolve field override: %v", err)
+	}
+	if err := interpreter.Interpret(statements); err != nil {
+		t.Fatalf("interpret field override: %v", err)
+	}
+	if got, want := output.String(), "field\n"; got != want {
+		t.Fatalf("field override output: got %q, want %q", got, want)
 	}
 }
 

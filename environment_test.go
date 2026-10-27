@@ -97,6 +97,46 @@ func TestEnvironmentAssignsEnclosingValues(t *testing.T) {
 	}
 }
 
+func TestEnvironmentGetsAndAssignsAtDistance(t *testing.T) {
+	global := NewEnvironment()
+	outer := NewEnvironment(global)
+	local := NewEnvironment(outer)
+	name := NewToken(IDENTIFIER, "answer", "answer", 1)
+	global.Define(name.Lexeme, 1.0)
+	outer.Define("other", "value")
+
+	value, err := local.GetAt(2, name)
+	if err != nil {
+		t.Fatalf("get value at distance: %v", err)
+	}
+	if got, want := value, 1.0; got != want {
+		t.Fatalf("value at distance: got %v, want %v", got, want)
+	}
+
+	if err := local.AssignAt(2, name, 2.0); err != nil {
+		t.Fatalf("assign value at distance: %v", err)
+	}
+	value, err = global.Get(name)
+	if err != nil {
+		t.Fatalf("get assigned value at distance: %v", err)
+	}
+	if got, want := value, 2.0; got != want {
+		t.Fatalf("assigned value at distance: got %v, want %v", got, want)
+	}
+}
+
+func TestEnvironmentRejectsMissingDistanceTargets(t *testing.T) {
+	environment := NewEnvironment()
+	name := NewToken(IDENTIFIER, "missing", "missing", 3)
+
+	if _, err := environment.GetAt(1, name); err == nil {
+		t.Fatal("get at missing distance succeeded, want an error")
+	}
+	if err := environment.AssignAt(1, name, "value"); err == nil {
+		t.Fatal("assign at missing distance succeeded, want an error")
+	}
+}
+
 func TestEnvironmentStoresNil(t *testing.T) {
 	environment := NewEnvironment()
 	name := NewToken(IDENTIFIER, "empty", "empty", 1)

@@ -114,6 +114,18 @@ func TestParserLimitsFunctionArgumentsAndParameters(t *testing.T) {
 	}
 }
 
+func TestParserAcceptsFunctionArgumentAndParameterLimit(t *testing.T) {
+	arguments := strings.TrimSuffix(strings.Repeat("1,", 255), ",")
+	if _, err := parseSource("f(" + arguments + ");"); err != nil {
+		t.Fatalf("255 arguments rejected: %v", err)
+	}
+
+	parameters := strings.TrimSuffix(strings.Repeat("a,", 255), ",")
+	if _, err := parseSource("fun f(" + parameters + ") {}"); err != nil {
+		t.Fatalf("255 parameters rejected: %v", err)
+	}
+}
+
 func TestParserSyntaxErrors(t *testing.T) {
 	tests := []struct {
 		name    string

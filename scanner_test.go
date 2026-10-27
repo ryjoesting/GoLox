@@ -201,6 +201,22 @@ func TestScannerNumbers(t *testing.T) {
 	})
 }
 
+func TestScannerNumberFractionRequiresDigits(t *testing.T) {
+	assertTokens(t, "42.foo 7.0", []expectedToken{
+		token(NUMBER, "42", "42", 1),
+		token(DOT, ".", nil, 1),
+		token(IDENTIFIER, "foo", "foo", 1),
+		token(NUMBER, "7.0", "7.0", 1),
+		eof(1),
+	})
+}
+
+func TestScannerUnterminatedStringTracksLines(t *testing.T) {
+	assertTokens(t, "\"first line\nsecond line", []expectedToken{
+		eof(2),
+	})
+}
+
 func TestScannerEmptySource(t *testing.T) {
 	assertTokens(t, "", []expectedToken{eof(1)})
 }

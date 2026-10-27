@@ -4,15 +4,22 @@ import "testing"
 
 func TestExpressionNodesImplementExpr(t *testing.T) {
 	var expressions = []Expr{
+		&Assign{},
 		&Binary{},
 		&Call{},
+		&Conditional{},
+		&Get{},
 		&Grouping{},
 		&Literal{},
+		&Logical{},
+		&Set{},
+		&This{},
 		&Unary{},
+		&Variable{},
 	}
 
-	if len(expressions) != 5 {
-		t.Fatalf("got %d expression nodes, want 5", len(expressions))
+	if len(expressions) != 12 {
+		t.Fatalf("got %d expression nodes, want 12", len(expressions))
 	}
 }
 
