@@ -1,0 +1,13 @@
+// Variables, arithmetic, comparisons, logic, and conditionals.
+var radius = 3;
+var area = 3.14159 * radius * radius;
+
+print "Area:";
+print area;
+print radius < 5 and true;
+
+if (area > 20) {
+  print "The circle is large.";
+} else {
+  print "The circle is small.";
+}

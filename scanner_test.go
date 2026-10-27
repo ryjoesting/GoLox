@@ -221,6 +221,19 @@ func TestScannerEmptySource(t *testing.T) {
 	assertTokens(t, "", []expectedToken{eof(1)})
 }
 
+func TestScannerReportsInvalidSource(t *testing.T) {
+	tests := []string{"@", `"unterminated`, "/* unterminated"}
+	for _, source := range tests {
+		t.Run(source, func(t *testing.T) {
+			scanner := NewScanner(source)
+			scanner.scanTokens()
+			if scanner.Error() == nil {
+				t.Fatalf("source %q: scanner error is nil", source)
+			}
+		})
+	}
+}
+
 func TestScannerMixedSource(t *testing.T) {
 	assertTokens(t, "var answer = 42; // comment\nprint answer;", []expectedToken{
 		token(VAR, "var", nil, 1),

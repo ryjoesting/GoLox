@@ -40,7 +40,11 @@ func (parser *Parser) Parse() ([]Stmt, error) {
 			if firstError == nil {
 				firstError = err
 			}
+			current := parser.current
 			parser.synchronize()
+			if parser.current == current && !parser.isAtEnd() {
+				parser.advance()
+			}
 			continue
 		}
 		statements = append(statements, statement)
@@ -299,7 +303,11 @@ func (parser *Parser) blockStatement() (Stmt, error) {
 			if firstError == nil {
 				firstError = err
 			}
+			current := parser.current
 			parser.synchronize()
+			if parser.current == current && !parser.isAtEnd() {
+				parser.advance()
+			}
 			continue
 		}
 		statements = append(statements, statement)
@@ -361,11 +369,16 @@ func (parser *Parser) expressionStatement() (Stmt, error) {
 
 func (parser *Parser) synchronize() {
 	for !parser.isAtEnd() {
-		if parser.previous().Type == SEMICOLON {
+		previousIsSemicolon := parser.current > 0 &&
+			parser.previous().Type == SEMICOLON
+		if previousIsSemicolon && parser.peek().Type != RIGHT_BRACE {
 			return
 		}
 		switch parser.peek().Type {
 		case CLASS, FUN, VAR, FOR, IF, WHILE, PRINT, RETURN, RIGHT_BRACE:
+			if parser.peek().Type == RIGHT_BRACE && previousIsSemicolon {
+				parser.advance()
+			}
 			return
 		}
 		parser.advance()

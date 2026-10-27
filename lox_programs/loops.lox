@@ -1,0 +1,11 @@
+// Functions, parameters, return values, and for loops.
+fun sumTo(limit) {
+  var total = 0;
+  for (var number = 1; number <= limit; number = number + 1) {
+    total = total + number;
+  }
+  return total;
+}
+
+print sumTo(5);
+print sumTo(10);

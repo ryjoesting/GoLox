@@ -47,6 +47,15 @@ You can also provide an absolute or relative path to another `.lox` source file:
 go run . path\to\your\source.lox
 ```
 
+Several runnable examples are in the [`lox_programs`](C:/Users/ryjoe/OneDrive%20-%20The%20University%20of%20Alabama/Documents/Academic/CS%20403%20Programming%20Languages/golox/lox_programs) directory:
+
+```text
+go run . "lox_programs\basics.lox"
+go run . "lox_programs\loops.lox"
+go run . "lox_programs\closures.lox"
+go run . "lox_programs\classes.lox"
+```
+
 The program parses and executes complete Lox statements. Expression statements
 must end with `;` and discard their result. Print statements display their
 evaluated value, for example `print 1 + 2;` prints `3`. Global variables can
@@ -62,8 +71,9 @@ Function declarations use `fun name(parameters) { ... }`; functions are
 first-class values, support recursion and closures, and return with `return
 expression;` or `return;`. Calls evaluate arguments left to right, require an
 exact parameter count, and support at most 255 arguments. Returning from
-top-level code, calling a non-callable value, or passing the wrong number of
-arguments reports a runtime error.
+top-level code is rejected before execution by the resolver. Calling a
+non-callable value or passing the wrong number of arguments reports a runtime
+error.
 Classes are declared with `class Name { ... }`. Methods omit the `fun` keyword
 and can read or update instance state through `this`. A class may inherit from
 another class with `<`; inherited methods can be overridden and called
@@ -158,6 +168,15 @@ return one of their operands:
 var name = nil;
 print name or "Guest";  // Guest
 print true and 42;      // 42
+```
+
+The comma operator evaluates expressions from left to right and returns the
+last value. The conditional operator evaluates its condition and then only
+the selected branch; it associates from right to left:
+
+```lox
+print (1, 2, 3);              // 3
+print true ? "yes" : "no";    // yes
 ```
 
 ### Output and variables
@@ -265,8 +284,10 @@ print counter();  // 2
 
 Classes bundle instance data with methods. A class body contains methods whose
 names, parameters, and bodies follow the same rules as functions, but methods
-are declared without `fun`. Use `.` to read a property or call a method, and
-assigning to a property creates or updates an instance field:
+are declared without `fun`. Use `.` to read a property or call a method.
+Assigning to a property creates or updates an instance field. A class can
+inherit from another class with `<`; subclasses inherit methods, can override
+them, and can call the overridden implementation with `super.method()`:
 
 ```lox
 class Person {
@@ -304,10 +325,11 @@ class BostonCream < Doughnut {
 BostonCream().cook();
 ```
 
-Property access is dynamic. If a field does not exist, GoLox searches the
-class's methods. Reading or assigning properties on non-instance values is a
-runtime error, as is reading a missing property. A method can be stored in a
-variable and called later; it retains its original `this` instance:
+Property access is dynamic. Fields take precedence over methods; if a field
+does not exist, GoLox searches the class and its superclasses for a method.
+Reading or assigning properties on non-instance values is a runtime error, as
+is reading a missing property. A method can be stored in a variable and called
+later; it retains its original `this` instance:
 
 ```lox
 var callback = jane.sayName;
@@ -394,11 +416,12 @@ go test -run TestInterpreter -v
 The project includes a scanner, expression and statement ASTs, a recursive
 descent parser, a resolver, and a tree-walk interpreter. The AST uses sealed
 `Expr` and `Stmt` interfaces with expression nodes for binary operations,
-calls, conditionals, assignments, property access, property assignment,
-`this`, grouping, literals, logical operators, unary operators, and variables.
-Statement nodes include blocks, classes, expressions, functions, conditionals,
-prints, returns, variables, and loops. An `AstPrinter` renders expressions as
-parenthesized tree structures such as `(* (- 123) (group 45.67))`.
+calls, conditionals, comma expressions, assignments, property access, property
+assignment, `this`, `super`, grouping, literals, logical operators, unary
+operators, and variables. Statement nodes include blocks, classes, expressions,
+functions, conditionals, prints, returns, variables, and loops. An `AstPrinter`
+renders expressions as parenthesized tree structures such as
+`(* (- 123) (group 45.67))`.
 
 The parser uses recursive descent with precedence levels for comma, conditional,
 equality, comparison, term, factor, unary, and primary expressions, then wraps
@@ -416,22 +439,23 @@ starters.
 ## Project Files
 
 - `golox.go` - Program entry point and command-line handling.
-- `scanner.go` - Token definitions, lexical scanner, parser pipeline, REPL, and file execution.
+- `scanner.go` - Token definitions, lexical scanner, REPL, and file execution.
 - `ast.go` - Expression AST nodes and the `ExprVisitor` interface.
 - `statement.go` - Statement AST nodes and the `StmtVisitor` interface.
 - `ast_printer.go` - Visitor-based AST printer for inspecting tree structure.
 - `ast_test.go` - AST structure and printer tests.
 - `parser.go` - Recursive-descent program/statement parser and structured parse errors.
 - `parser_test.go` - Parser precedence, associativity, primary expression, and syntax error tests.
-- `environment.go` - Global name-to-value environment and undefined-variable lookup errors.
+- `environment.go` - Chained lexical environments and undefined-variable lookup errors.
 - `environment_test.go` - Environment definition, nesting, assignment, nil, and lookup-error tests.
 - `interpreter.go` - Expression/statement evaluator, runtime errors, and value formatting.
 - `function.go` - Callable interface and user-defined function closures.
-- `class.go` - Runtime classes, instances, fields, methods, and bound methods.
+- `class.go` - Runtime classes, inheritance, instances, fields, methods, and bound methods.
 - `resolver.go` - Static lexical scope resolver and binding diagnostics.
 - `interpreter_test.go` - Expression evaluation, runtime error, and pipeline tests.
 - `resolver_test.go` - Lexical binding, closure, and resolver diagnostic tests.
-- `stmt_test.go` - Statement parsing and execution tests.
+- `statement_test.go` - Statement parsing and execution tests.
 - `scanner_test.go` - Built-in Go tests for scanner behavior.
 - `test_src_code.lox` - Example Lox source file.
+- `lox_programs/` - Small runnable programs demonstrating core language features.
 - `go.mod` - Go module definition.

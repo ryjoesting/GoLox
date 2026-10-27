@@ -130,6 +130,7 @@ type Scanner struct {
 	start   int
 	current int
 	line    int
+	err     error
 }
 
 func NewScanner(source string) *Scanner {
@@ -153,6 +154,10 @@ func (s *Scanner) scanTokens() []*Token {
 	}
 	s.tokens = append(s.tokens, NewToken(EOF, "", nil, s.line))
 	return s.tokens
+}
+
+func (s *Scanner) Error() error {
+	return s.err
 }
 
 func (s *Scanner) scanToken() {
@@ -234,8 +239,7 @@ func (s *Scanner) scanToken() {
 		} else if isAlpha(c) {
 			s.identifier()
 		} else {
-			// unexpected character
-			reportError(s.line, "", fmt.Sprintf("unexpected character: %c", c))
+			s.reportError(fmt.Sprintf("Unexpected character: %c.", c))
 		}
 	}
 }
@@ -276,7 +280,7 @@ func (s *Scanner) string() {
 		s.advance()
 	}
 	if s.isAtEnd() {
-		reportError(s.line, "", "Unterminated string.")
+		s.reportError("Unterminated string.")
 		return
 	}
 	s.advance()
@@ -297,7 +301,7 @@ func (s *Scanner) blockComment() {
 		s.advance()
 	}
 
-	reportError(s.line, "", "Unterminated block comment.")
+	s.reportError("Unterminated block comment.")
 }
 
 func isDigit(c byte) bool {
@@ -367,7 +371,8 @@ func runFile(path string) int {
 	}
 	if err := runSource(string(content)); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		if _, ok := err.(ParseError); ok {
+		switch err.(type) {
+		case ParseError, ScanError:
 			return 65
 		}
 		return 70
@@ -415,9 +420,23 @@ func runSource(src string) error {
 func parseSource(src string) ([]Stmt, error) {
 	scanner := NewScanner(src)
 	tokens := scanner.scanTokens()
+	if err := scanner.Error(); err != nil {
+		return nil, err
+	}
 	return NewParser(tokens).Parse()
 }
 
-func reportError(line int, where string, message string) {
-	fmt.Fprintf(os.Stderr, "[line %d] Error %s: %s\n", line, where, message)
+type ScanError struct {
+	Line    int
+	Message string
+}
+
+func (error ScanError) Error() string {
+	return fmt.Sprintf("[line %d] Error: %s", error.Line, error.Message)
+}
+
+func (s *Scanner) reportError(message string) {
+	if s.err == nil {
+		s.err = ScanError{Line: s.line, Message: message}
+	}
 }

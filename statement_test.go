@@ -58,6 +58,19 @@ func TestParserSynchronizesAfterStatementError(t *testing.T) {
 	}
 }
 
+func TestParserSynchronizesPastStrayClosingBrace(t *testing.T) {
+	statements, err := parseSource("1 + ; } print 2;")
+	if err == nil {
+		t.Fatal("parse succeeded, want a syntax error")
+	}
+	if len(statements) != 1 {
+		t.Fatalf("got %d recovered statements, want 1", len(statements))
+	}
+	if _, ok := statements[0].(*PrintStmt); !ok {
+		t.Fatalf("recovered statement type: got %T, want *PrintStmt", statements[0])
+	}
+}
+
 func TestParserAcceptsUninitializedVariable(t *testing.T) {
 	statements, err := parseSource("var beverage;")
 	if err != nil {

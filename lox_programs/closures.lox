@@ -1,0 +1,16 @@
+// A closure keeps access to a variable from its defining scope.
+fun makeCounter() {
+  var count = 0;
+
+  fun increment() {
+    count = count + 1;
+    return count;
+  }
+
+  return increment;
+}
+
+var counter = makeCounter();
+print counter();
+print counter();
+print counter();
